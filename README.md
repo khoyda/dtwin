@@ -106,7 +106,36 @@ The project has **two** process models, by design:
   water stress and cuts biomass (see `tests/test_process_model.py`). Absolute yields on real
   SK weather (~1300–1700 kg/ha) read a little low vs. provincial stats — expected, since a
   point station ≠ a province, and **parameters are uncalibrated conventional defaults**.
-  Calibrating to Prairie data is the next step (see roadmap).
+  Calibrating to Prairie data is described next.
+
+### Calibration
+
+[`calibration.py`](src/canola_dt/calibration.py) + `scripts/calibrate_process_model.py`
+calibrate the model against StatCan yields. Two ideas make this honest:
+
+1. **Separate the technology trend from weather.** Observed yields rise ~35–42 kg/ha/yr
+   (genetics/agronomy) — something a fixed-genetics process model neither can nor should
+   reproduce. We fit a per-province linear trend and express every year's yield at a common
+   reference year, so the model is calibrated to the **weather-driven** variation only.
+2. **Calibrate each parameter to what it can actually identify** (three steps):
+   - **pattern** — grid `kl` × `hi_heat_sensitivity` to maximize the interannual
+     **anomaly correlation** (does the model pick the right good/bad years?);
+   - **level** — set `rue` so the mean simulated yield matches the mean observed;
+   - **offsets** — per-province residuals (a point station ≠ a province).
+
+   ```powershell
+   python scripts/calibrate_process_model.py   # writes artifacts/calibrated_params.json
+   ```
+   The result is loaded automatically wherever `CanolaParameters.from_calibrated(cfg)` is used.
+
+**What calibration found (honest assessment).** Calibration fixes the *level* (mean bias → ~0)
+and keeps heat/drought stress physically active, but interannual **skill stays modest
+(anomaly correlation ≈ 0.27)**. The reason is structural, not a tuning failure: a single
+station's simulated yield is **~3.5× more volatile** than a province-wide average, because a
+province aggregates thousands of fields across many soils and microclimates. You cannot
+reproduce a smooth provincial series from one point. The way up: simulate **many points per
+province** and aggregate, and/or validate against **sub-provincial (SCIC/MASC RM-level)**
+yields — the same conclusion the ML pipeline reached.
 
 ## Real data pipeline
 
@@ -149,10 +178,10 @@ local weather (the AAFC/SCIC path above).
 - [x] Real ECCC weather ingestion (bulk daily, cached per station-year)
 - [x] Historical yield join (StatCan) and model training (CV R² ≈ 0.59)
 - [x] APSIM-style mechanistic crop model (phenology, RUE biomass, layered soil water, yield)
-- [ ] Calibrate process-model parameters (RUE, kl, HI, soil) against StatCan/SCIC yields
+- [x] Calibrate process-model parameters vs trend-adjusted StatCan yields (level + pattern)
+- [ ] Multi-point simulation per province (aggregate to reduce point-vs-province volatility)
 - [ ] Use process-model outputs (biomass, LAI, water stress) as features for the ML model
 - [ ] Sub-provincial AAFC/SCIC yields matched to local weather (weather-driven model)
-- [ ] More stations per province (province-mean weather; capture spatial variation)
 - [ ] Data assimilation step (Kalman/EnKF) to correct simulated state
 
 ## Key references

@@ -22,14 +22,18 @@ canola defaults — treat parameters as starting points, not validated values.
 
 from __future__ import annotations
 
+import json
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, fields, replace
 
 import numpy as np
 import pandas as pd
 
 from canola_dt.constants import GrowthStage
 from canola_dt.simulation import agromet
+
+# Parameters exposed to the calibration routine.
+CALIBRATABLE = ("rue", "kl", "hi_heat_sensitivity", "harvest_index")
 
 
 @dataclass
@@ -76,6 +80,29 @@ class CanolaParameters:
     hi_water_sensitivity: float = 0.25 # HI fraction lost at full flowering water stress
     heat_threshold_c: float = 29.5     # daily tmax above which canola flowers abort
     min_hi_fraction: float = 0.4       # floor on stressed HI relative to potential
+
+    def with_overrides(self, overrides: dict) -> "CanolaParameters":
+        """Return a copy with the given fields replaced (unknown keys ignored)."""
+        known = {f.name for f in fields(self)}
+        return replace(self, **{k: v for k, v in overrides.items() if k in known})
+
+    @classmethod
+    def from_config(cls, cfg) -> "CanolaParameters":
+        """Build from the ``process_model`` section of config.yaml (over defaults)."""
+        return cls().with_overrides(cfg.get("process_model", {}) or {})
+
+    @classmethod
+    def from_calibrated(cls, cfg) -> "CanolaParameters":
+        """Like :meth:`from_config`, then overlay ``artifacts/calibrated_params.json``.
+
+        Calibrated values (if the file exists) take precedence, so a calibration run
+        immediately takes effect everywhere parameters are loaded this way.
+        """
+        params = cls.from_config(cfg)
+        path = cfg.path("artifacts") / "calibrated_params.json"
+        if path.exists():
+            params = params.with_overrides(json.loads(path.read_text()))
+        return params
 
 
 @dataclass

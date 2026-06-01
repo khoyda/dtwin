@@ -45,7 +45,8 @@ def main() -> None:
     print(f"   site lat {info['lat']}, season rows {len(season)} "
           f"({season['date'].min().date()} -> {season['date'].max().date()})")
 
-    model = CanolaCropModel(CanolaParameters())
+    # Use calibrated parameters if a calibration run has produced them.
+    model = CanolaCropModel(CanolaParameters.from_calibrated(cfg))
     result = model.run(season, latitude_deg=float(info["lat"]))
 
     s = result.summary
