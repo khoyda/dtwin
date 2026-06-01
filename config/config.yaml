@@ -1,0 +1,46 @@
+# Configuration for the Canola Digital Twin
+# Paths are relative to the project root unless absolute.
+
+paths:
+  data_raw: data/raw
+  data_processed: data/processed
+  data_external: data/external
+  artifacts: artifacts
+
+region:
+  name: Canadian Prairies
+  # Default agro-climatic zone used when a field has no explicit zone.
+  default_zone: SK-dark-brown
+
+season:
+  # Typical Prairie canola calendar (day-of-year bounds for the simulation window).
+  seeding_doy_default: 130     # ~ May 10
+  harvest_doy_default: 260     # ~ mid-September
+
+agronomy:
+  gdd_base_temp_c: 5.0         # canola base temperature for GDD accumulation
+  gdd_cap_temp_c: 30.0         # upper cap applied to daily mean before GDD calc
+  heat_stress_threshold_c: 29.5  # daily max above this during flowering -> flower abortion
+  # Cumulative GDD thresholds (base 5C) marking phenological stage transitions.
+  stage_gdd_thresholds:
+    emergence: 120
+    rosette: 350
+    bolting: 600
+    flowering: 900
+    ripening: 1500
+    maturity: 1900
+
+water_balance:
+  soil_water_capacity_mm: 150.0   # plant-available water in rooting zone
+  initial_soil_water_frac: 0.7    # fraction of capacity at seeding
+  crop_coefficient_kc: 1.0        # mid-season Kc (simplified, single value)
+
+model:
+  type: random_forest            # random_forest | gradient_boosting | linear
+  target: yield_kg_ha
+  test_size: 0.2
+  random_state: 42
+  random_forest:
+    n_estimators: 300
+    max_depth: null
+    min_samples_leaf: 3
