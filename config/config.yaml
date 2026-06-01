@@ -48,9 +48,9 @@ data_sources:
     # One representative long-record agricultural (CDA) station per province.
     # station_id -> {province, name}. Override/extend freely.
     stations:
-      2925: {province: Saskatchewan, name: INDIAN HEAD CDA}
-      2265: {province: Alberta, name: LETHBRIDGE CDA}
-      26857: {province: Manitoba, name: CARMAN U OF M CS}
+      2925: {province: Saskatchewan, name: INDIAN HEAD CDA, lat: 50.55, lon: -103.65}
+      2265: {province: Alberta, name: LETHBRIDGE CDA, lat: 49.70, lon: -112.77}
+      26857: {province: Manitoba, name: CARMAN U OF M CS, lat: 49.50, lon: -98.03}
 
   statcan:
     table_pid: "32100359"            # Estimated areas, yield, production of crops

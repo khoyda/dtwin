@@ -45,8 +45,10 @@ canola-digital-twin/
 │   ├── features.py              # GDD, heat-stress, water-balance features
 │   ├── models/yield_model.py    # sklearn yield-prediction pipeline
 │   └── simulation/
-│       ├── growth.py            # phenology + simple water/biomass dynamics
+│       ├── growth.py            # lightweight phenology + bucket water balance
 │       ├── phenology.py         # crop timing: stage timeline + forward forecast
+│       ├── agromet.py           # FAO-56 radiation, daylength, ET0, thermal time
+│       ├── process_model.py     # APSIM-style mechanistic canola model
 │       └── twin.py              # CanolaDigitalTwin orchestrator
 ├── scripts/run_simulation.py    # end-to-end demo on synthetic data
 └── tests/                       # smoke + unit tests
@@ -72,6 +74,39 @@ python scripts/train_yield_model.py
 # Run tests
 pytest
 ```
+
+## Crop models: two tiers
+
+The project has **two** process models, by design:
+
+- **Lightweight** ([`growth.py`](src/canola_dt/simulation/growth.py)) — GDD phenology +
+  single-bucket water balance. Fast, few parameters; drives the twin's interpretable
+  state trajectory and the crop-timing forecasts, and is the seam for data assimilation.
+- **APSIM-style mechanistic** ([`process_model.py`](src/canola_dt/simulation/process_model.py))
+  — a daily-step model with the core processes APSIM/DSSAT represent:
+  - cardinal-temperature **thermal time** with a long-day **photoperiod** modifier on the
+    pre-floral phase;
+  - **canopy** expansion (thermal-time driven) with Beer's-law light interception and
+    post-flowering senescence;
+  - **biomass** via **radiation-use efficiency** on intercepted PAR, down-regulated by water stress;
+  - a **layered cascading soil-water balance** (SCS-CN runoff, tipping-bucket drainage,
+    two-source evaporation/transpiration, root-front growth, per-layer uptake);
+  - **yield** = maturity biomass × a harvest index reduced by flowering heat and water stress.
+
+  Radiation/ET inputs are derived from temperature + latitude via FAO-56 equations in
+  [`agromet.py`](src/canola_dt/simulation/agromet.py), since ECCC daily station data has
+  no solar/wind/humidity.
+
+  ```powershell
+  python scripts/run_process_model.py 2020   # run on real ECCC weather for a year
+  ```
+
+  **Validation status.** Behaviour is correct — a controlled favourable vs. hot-dry season
+  gives ~1600 vs. ~400 kg/ha; heat during flowering collapses harvest index; drought raises
+  water stress and cuts biomass (see `tests/test_process_model.py`). Absolute yields on real
+  SK weather (~1300–1700 kg/ha) read a little low vs. provincial stats — expected, since a
+  point station ≠ a province, and **parameters are uncalibrated conventional defaults**.
+  Calibrating to Prairie data is the next step (see roadmap).
 
 ## Real data pipeline
 
@@ -113,10 +148,12 @@ local weather (the AAFC/SCIC path above).
 - [x] Scaffold + synthetic end-to-end pipeline
 - [x] Real ECCC weather ingestion (bulk daily, cached per station-year)
 - [x] Historical yield join (StatCan) and model training (CV R² ≈ 0.59)
+- [x] APSIM-style mechanistic crop model (phenology, RUE biomass, layered soil water, yield)
+- [ ] Calibrate process-model parameters (RUE, kl, HI, soil) against StatCan/SCIC yields
+- [ ] Use process-model outputs (biomass, LAI, water stress) as features for the ML model
 - [ ] Sub-provincial AAFC/SCIC yields matched to local weather (weather-driven model)
 - [ ] More stations per province (province-mean weather; capture spatial variation)
 - [ ] Data assimilation step (Kalman/EnKF) to correct simulated state
-- [ ] Calibration of GDD thresholds & heat-stress response to Prairie data
 
 ## Key references
 
