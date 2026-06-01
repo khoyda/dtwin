@@ -35,6 +35,33 @@ water_balance:
   initial_soil_water_frac: 0.7    # fraction of capacity at seeding
   crop_coefficient_kc: 1.0        # mid-season Kc (simplified, single value)
 
+data_sources:
+  # Training window (years). Canola yields available well before this; kept
+  # recent so a single ECCC station ID covers the period without stitching.
+  start_year: 1995
+  end_year: 2023
+  # Growing-season window used to aggregate daily weather into season features.
+  season_start: {month: 5, day: 1}    # ~ seeding
+  season_end: {month: 9, day: 30}     # ~ harvest
+
+  eccc:
+    # One representative long-record agricultural (CDA) station per province.
+    # station_id -> {province, name}. Override/extend freely.
+    stations:
+      2925: {province: Saskatchewan, name: INDIAN HEAD CDA}
+      2265: {province: Alberta, name: LETHBRIDGE CDA}
+      26857: {province: Manitoba, name: CARMAN U OF M CS}
+
+  statcan:
+    table_pid: "32100359"            # Estimated areas, yield, production of crops
+    crop: Canola (rapeseed)
+    yield_disposition: Average yield (kilograms per hectare)
+    provinces: [Saskatchewan, Alberta, Manitoba]
+
+  aafc:
+    # Optional sub-provincial yields (e.g. SCIC RM / MASC). See data/aafc.py.
+    yield_csv: null                  # path to an AAFC/SCIC region-yield CSV, if available
+
 model:
   type: random_forest            # random_forest | gradient_boosting | linear
   target: yield_kg_ha

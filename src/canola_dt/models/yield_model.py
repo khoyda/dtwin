@@ -13,7 +13,7 @@ import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -60,6 +60,22 @@ class YieldModel:
             "mae_kg_ha": float(mean_absolute_error(y_te, pred)),
             "n_train": int(len(X_tr)),
             "n_test": int(len(X_te)),
+        }
+
+    def cross_validate(self, X: pd.DataFrame, y: pd.Series, n_splits: int = 5) -> dict[str, float]:
+        """K-fold CV metrics — more honest than a single split on a small dataset.
+
+        Uses a fresh pipeline per fold so scaler/estimator never see held-out rows.
+        """
+        n_splits = min(n_splits, len(X))
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.cfg.get("random_state", 42))
+        r2 = cross_val_score(self.pipeline, X, y, cv=kf, scoring="r2")
+        mae = -cross_val_score(self.pipeline, X, y, cv=kf, scoring="neg_mean_absolute_error")
+        return {
+            "cv_r2_mean": float(r2.mean()),
+            "cv_r2_std": float(r2.std()),
+            "cv_mae_mean": float(mae.mean()),
+            "n_splits": int(n_splits),
         }
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
