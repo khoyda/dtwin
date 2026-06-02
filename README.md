@@ -189,6 +189,38 @@ local weather (the AAFC/SCIC path above).
 | Soil         | SoilGrids; AAFC Soil Landscapes of Canada (SLC)                   |
 | Phenology    | Canola Council of Canada growth-stage guide (BBCH-aligned)        |
 
+## Sub-provincial validation (Saskatchewan)
+
+[`subprovincial.py`](src/canola_dt/subprovincial.py) + `scripts/validate_subprovincial.py`
+test the provincial-ceiling hypothesis directly, using real **RM-level (Rural Municipality)**
+canola yields:
+
+- **RM yields** — Saskatchewan Dashboard "RM Yields" export (SCIC + Crop Report), bu/ac → kg/ha.
+- **RM locations** — Government of Saskatchewan ArcGIS feature service (298 RM centroids).
+
+Each ECCC station is matched to its nearest RM; the station's *simulated* yield is compared to
+that *local* RM's *observed* yield, with the same detrending as the provincial calibration.
+
+```powershell
+python scripts/validate_subprovincial.py
+```
+
+**Result (10 SK stations, 1995–2023, 287 station-years).** Interannual anomaly correlation,
+same stations and method, only the target scale differs:
+
+| yield target            | anomaly correlation |
+|-------------------------|---------------------|
+| provincial (StatCan SK) | +0.30               |
+| **local RM (SCIC)**     | **+0.37**           |
+
+Local matching beats provincial — confirming the hypothesis. The improvement is modest in the
+pool because station-to-RM representativeness varies a lot: well-matched stations reach
+**r = 0.5–0.66** (far above the provincial ceiling), while a few sit in RMs whose yields they
+don't track (one weather *point* imperfectly represents even one RM). Point-in-polygon matching
+gives the same pooled result (≈0.37), so the limiter is representativeness, not the join. The
+next lever is **gridded weather per RM** (NASA POWER / ERA5) instead of a single station, and
+extending to **Manitoba MASC** RM yields.
+
 ## Roadmap
 
 - [x] Scaffold + synthetic end-to-end pipeline
@@ -197,9 +229,10 @@ local weather (the AAFC/SCIC path above).
 - [x] APSIM-style mechanistic crop model (phenology, RUE biomass, layered soil water, yield)
 - [x] Calibrate process-model parameters vs trend-adjusted StatCan yields (level + pattern)
 - [x] Multi-point simulation per province (10 stations each; offsets→≈0, corr plateaus ~0.39)
-- [ ] Sub-provincial AAFC/SCIC (SCIC/MASC RM-level) yields matched to local weather **(next)**
+- [x] Sub-provincial validation vs SK SCIC RM-level yields (local corr 0.37 > provincial 0.30)
+- [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
+- [ ] Extend sub-provincial validation to Manitoba MASC RM yields
 - [ ] Use process-model outputs (biomass, LAI, water stress) as features for the ML model
-- [ ] Area-weight stations / RM aggregation toward provincial totals
 - [ ] Data assimilation step (Kalman/EnKF) to correct simulated state
 
 ## Key references
