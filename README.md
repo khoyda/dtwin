@@ -44,6 +44,10 @@ canola-digital-twin/
 │   ├── data/preprocess.py       # clean + align to daily field-season frames
 │   ├── features.py              # GDD, heat-stress, water-balance features
 │   ├── models/yield_model.py    # sklearn yield-prediction pipeline
+│   ├── advisory/                # decision-support layer (agronomic alerts + yield)
+│   │   ├── agronomy.py          #   Canola Council thresholds + enums (AgronomyParameters)
+│   │   ├── state.py             #   CanolaFieldState virtual entity (JSON-serialisable)
+│   │   └── engine.py            #   CanolaAdvisoryEngine: alerts + process-model yield
 │   └── simulation/
 │       ├── growth.py            # lightweight phenology + bucket water balance
 │       ├── phenology.py         # crop timing: stage timeline + forward forecast
@@ -210,6 +214,34 @@ sub-provincial scale where weather drives a larger share of the variance.
 | Soil         | SoilGrids; AAFC Soil Landscapes of Canada (SLC)                   |
 | Phenology    | Canola Council of Canada growth-stage guide (BBCH-aligned)        |
 
+## Advisory layer (decision support)
+
+[`advisory/`](src/canola_dt/advisory) is the application-layer decision-support front end,
+built on Canola Council of Canada agronomic thresholds. `CanolaFieldState` is a
+JSON-serialisable virtual entity updated by perception-layer sensor readings;
+`CanolaAdvisoryEngine` advances growth stage and emits **alerts** (plant density,
+heat/frost/waterlogging, flea beetle, sclerotinia, clubroot, seed-row N/P, rotation,
+harvest readiness) plus seeding-rate and N-requirement calculators and a swath vs
+straight-cut recommender.
+
+Crucially, **yield is not a heuristic here** — it comes from the calibrated biophysical
+process model, multiplied by the management factors the process model doesn't represent
+(plant density, preceding-crop rotation, N adequacy); heat and water stress are left to the
+process model to avoid double-counting. This unites the mechanistic core with the agronomic
+advisory front end:
+
+```powershell
+python scripts/run_advisory.py   # alerts over a sensor season + calibrated yield on real weather
+```
+
+```
+yield = process_model(weather, soil) x density_mod x rotation_mod x N_mod
+        └─ calibrated biophysical ─┘   └──── advisory management modifiers ────┘
+```
+
+> Note: `advisory/agronomy.py` defines `AgronomyParameters` (threshold constants) — distinct
+> from the biophysical `CanolaParameters` in `simulation/process_model.py`.
+
 ## Sub-provincial validation (Saskatchewan)
 
 [`subprovincial.py`](src/canola_dt/subprovincial.py) + `scripts/validate_subprovincial.py`
@@ -252,6 +284,7 @@ extending to **Manitoba MASC** RM yields.
 - [x] Multi-point simulation per province (10 stations each; offsets→≈0, corr plateaus ~0.39)
 - [x] Sub-provincial validation vs SK SCIC RM-level yields (local corr 0.37 > provincial 0.30)
 - [x] Couple process-model outputs (yield, biomass, LAI, water stress, timing) into ML features
+- [x] Advisory layer: Canola Council agronomic alerts + calibrated process-model yield
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields
 - [ ] Sub-provincial (RM-level) ML model: local weather + process features vs SCIC yields
