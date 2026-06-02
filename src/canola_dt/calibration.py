@@ -105,28 +105,40 @@ def _prepare_season(daily: pd.DataFrame, year: int) -> pd.DataFrame:
     return s.reset_index()
 
 
-def load_season_frames(cfg: Config) -> dict[tuple[str, int], tuple[pd.DataFrame, float]]:
-    """Pre-load usable (province, year) -> (season frame, latitude). Cached on disk."""
+def load_season_frames(cfg: Config) -> dict[tuple[str, int, int], tuple[pd.DataFrame, float]]:
+    """Pre-load usable (province, station_id, year) -> (season frame, latitude).
+
+    Multiple stations per province are kept separately; their simulated yields are
+    averaged per province-year in :func:`simulate_all`. Cached on disk.
+    """
     ds = cfg["data_sources"]
     cache = cfg.path("data_raw") / "eccc"
-    frames: dict[tuple[str, int], tuple[pd.DataFrame, float]] = {}
+    frames: dict[tuple[str, int, int], tuple[pd.DataFrame, float]] = {}
     for sid, info in ds["eccc"]["stations"].items():
         for year in range(ds["start_year"], ds["end_year"] + 1):
             frame = _prepare_season(eccc.fetch_daily(int(sid), year, cache), year)
             if len(frame) < MIN_SEASON_DAYS or frame["tmean_c"].notna().mean() < MIN_COMPLETENESS:
                 continue
-            frames[(info["province"], year)] = (frame, float(info["lat"]))
+            frames[(info["province"], int(sid), year)] = (frame, float(info["lat"]))
     return frames
 
 
 def simulate_all(frames: dict, params: CanolaParameters) -> pd.DataFrame:
-    """Run the process model over every pre-loaded (province, year)."""
+    """Run the model per station-year, then average to province-year sim yields.
+
+    Averaging across a province's stations approximates the spatial averaging that
+    a provincial yield statistic represents, damping single-point volatility.
+    """
     rows = []
-    for (province, year), (frame, lat) in frames.items():
+    for (province, station_id, year), (frame, lat) in frames.items():
         res = CanolaCropModel(params).run(frame, lat)
-        rows.append({"province": province, "year": year,
+        rows.append({"province": province, "station_id": station_id, "year": year,
                      "sim_yield": res.summary["yield_kg_ha"]})
-    return pd.DataFrame(rows)
+    per_station = pd.DataFrame(rows)
+    return (
+        per_station.groupby(["province", "year"], as_index=False)
+        .agg(sim_yield=("sim_yield", "mean"), n_stations=("station_id", "nunique"))
+    )
 
 
 def load_targets(cfg: Config) -> pd.DataFrame:

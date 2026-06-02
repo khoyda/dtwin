@@ -45,12 +45,29 @@ data_sources:
   season_end: {month: 9, day: 30}     # ~ harvest
 
   eccc:
-    # One representative long-record agricultural (CDA) station per province.
-    # station_id -> {province, name}. Override/extend freely.
+    # Multiple long-record stations per province, spread across the canola belt and
+    # verified for daily-data completeness (1995-2023). Simulated yields are averaged
+    # across a province's stations to approximate the spatial average that a provincial
+    # yield statistic represents. station_id -> {province, name, lat, lon}.
     stations:
+      # Saskatchewan (SE, W-central, central, SW-central, NW)
       2925: {province: Saskatchewan, name: INDIAN HEAD CDA, lat: 50.55, lon: -103.65}
-      2265: {province: Alberta, name: LETHBRIDGE CDA, lat: 49.70, lon: -112.77}
+      3259: {province: Saskatchewan, name: SCOTT CDA, lat: 52.36, lon: -108.83}
+      3318: {province: Saskatchewan, name: OUTLOOK PFRA, lat: 51.48, lon: -107.05}
+      3071: {province: Saskatchewan, name: BEECHY, lat: 50.83, lon: -107.31}
+      3212: {province: Saskatchewan, name: BUTTE ST PIERRE, lat: 53.45, lon: -109.20}
+      # Alberta (NE, central, central-east, east, south)
+      2832: {province: Alberta, name: COLD LAKE A, lat: 54.42, lon: -110.28}
+      1870: {province: Alberta, name: EDMONTON STONY PLAIN, lat: 53.55, lon: -114.11}
+      1839: {province: Alberta, name: CAMROSE, lat: 53.05, lon: -112.82}
+      1881: {province: Alberta, name: FABYAN, lat: 52.97, lon: -111.00}
+      2224: {province: Alberta, name: CLARESHOLM, lat: 50.00, lon: -113.64}
+      # Manitoba (S Red River, SE/central, SW, central-west, NW)
       26857: {province: Manitoba, name: CARMAN U OF M CS, lat: 49.50, lon: -98.03}
+      3678: {province: Manitoba, name: STONY MOUNTAIN, lat: 50.12, lon: -97.17}
+      3463: {province: Manitoba, name: BALDUR, lat: 49.28, lon: -99.29}
+      3853: {province: Manitoba, name: MCCREARY, lat: 50.71, lon: -99.53}
+      3820: {province: Manitoba, name: MAFEKING, lat: 52.67, lon: -101.10}
 
   statcan:
     table_pid: "32100359"            # Estimated areas, yield, production of crops

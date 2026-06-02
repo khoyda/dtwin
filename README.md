@@ -128,14 +128,21 @@ calibrate the model against StatCan yields. Two ideas make this honest:
    ```
    The result is loaded automatically wherever `CanolaParameters.from_calibrated(cfg)` is used.
 
-**What calibration found (honest assessment).** Calibration fixes the *level* (mean bias → ~0)
-and keeps heat/drought stress physically active, but interannual **skill stays modest
-(anomaly correlation ≈ 0.27)**. The reason is structural, not a tuning failure: a single
-station's simulated yield is **~3.5× more volatile** than a province-wide average, because a
-province aggregates thousands of fields across many soils and microclimates. You cannot
-reproduce a smooth provincial series from one point. The way up: simulate **many points per
-province** and aggregate, and/or validate against **sub-provincial (SCIC/MASC RM-level)**
-yields — the same conclusion the ML pipeline reached.
+**What calibration found.** Calibration fixes the *level* (mean bias → ~0) and keeps
+heat/drought stress physically active. Averaging **five stations per province** (rather than
+one) substantially improves things, confirming the spatial-aggregation hypothesis:
+
+| metric                       | 1 station | 5 stations/province |
+|------------------------------|-----------|---------------------|
+| interannual anomaly corr.    | 0.27      | **0.39**            |
+| point-vs-province volatility | 3.5×      | **2.16×**           |
+| calibrated RUE (g/MJ)        | 2.11      | **1.57** (realistic)|
+| abs. error after offsets     | 1298      | **565 kg/ha**       |
+
+The inflated RUE under one station was compensating for single-point bias; with five it
+settles into the agronomic 1.2–1.7 range. The volatility ratio is still >1 (a point/aggregate
+sim remains more variable than a whole province), so **more stations per province** would help
+further, as would validating against **sub-provincial (SCIC/MASC RM-level)** yields.
 
 ## Real data pipeline
 
@@ -143,10 +150,11 @@ yields — the same conclusion the ML pipeline reached.
 fits the configured model:
 
 - **Weather — ECCC** ([`data/eccc.py`](src/canola_dt/data/eccc.py)): daily climate
-  data pulled from the Environment & Climate Change Canada bulk endpoint for one
-  long-record agricultural (CDA) station per Prairie province, cached per station-year.
-  Defaults: Indian Head CDA (SK), Lethbridge CDA (AB), Carman U of M CS (MB). Growing
-  season (May 1–Sep 30) features are aggregated via the same twin used at inference.
+  data pulled from the Environment & Climate Change Canada bulk endpoint for **five
+  long-record stations per Prairie province** (15 total), spread across each province's
+  canola belt and verified for completeness, cached per station-year. Growing-season
+  (May 1–Sep 30) features are aggregated to a province-year mean (the spatial average a
+  provincial yield represents) via the same twin used at inference.
 - **Yield — StatCan** ([`data/statcan.py`](src/canola_dt/data/statcan.py)): canola
   *average yield (kg/ha)* by province by year from Table 32-10-0359, via the Web Data
   Service full-table download.
@@ -156,10 +164,10 @@ fits the configured model:
   yields). There's no single stable API URL for these, so the loader takes a user-supplied
   CSV — set `data_sources.aafc.yield_csv` and see that module's docstring for the schema.
 
-**Current result (1995–2023, 3 provinces, 78 samples):** 5-fold CV R² ≈ **0.59**, MAE ≈
-**197 kg/ha** (~11% of the ~1800 kg/ha mean). The dominant feature is `year` — canola
+**Current result (1995–2023, 3 provinces, 87 samples):** 5-fold CV R² ≈ **0.62**, MAE ≈
+**200 kg/ha** (~11% of the ~1830 kg/ha mean). The dominant feature is `year` — canola
 yields carry a strong upward technology/genetics trend that weather can't explain;
-weather features (min temp, water stress, precip, heat-stress days) add the remaining
+weather features (water stress, dry days, heat-stress days, precip) add the remaining
 signal. To make *weather* the primary driver, train on sub-provincial yields matched to
 local weather (the AAFC/SCIC path above).
 
@@ -179,7 +187,8 @@ local weather (the AAFC/SCIC path above).
 - [x] Historical yield join (StatCan) and model training (CV R² ≈ 0.59)
 - [x] APSIM-style mechanistic crop model (phenology, RUE biomass, layered soil water, yield)
 - [x] Calibrate process-model parameters vs trend-adjusted StatCan yields (level + pattern)
-- [ ] Multi-point simulation per province (aggregate to reduce point-vs-province volatility)
+- [x] Multi-point simulation per province (5 stations each; volatility 3.5×→2.16×, corr→0.39)
+- [ ] Add yet more stations / weight by canola area to push volatility ratio toward 1
 - [ ] Use process-model outputs (biomass, LAI, water stress) as features for the ML model
 - [ ] Sub-provincial AAFC/SCIC yields matched to local weather (weather-driven model)
 - [ ] Data assimilation step (Kalman/EnKF) to correct simulated state

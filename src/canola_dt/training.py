@@ -32,7 +32,11 @@ class TrainingData:
 
 
 def build_weather_features(cfg: Config) -> pd.DataFrame:
-    """One row of twin-derived features per (province, year) with usable weather."""
+    """Twin-derived features averaged across each province's stations, per year.
+
+    Multiple stations per province are reduced to a province-year mean, mirroring
+    the spatial average that a provincial yield statistic represents.
+    """
     ds = cfg["data_sources"]
     cache = cfg.path("data_raw") / "eccc"
     s_start = (ds["season_start"]["month"], ds["season_start"]["day"])
@@ -56,7 +60,14 @@ def build_weather_features(cfg: Config) -> pd.DataFrame:
                 "completeness": round(completeness, 3),
             }
             rows.append(feats)
-    return pd.DataFrame(rows)
+
+    df = pd.DataFrame(rows)
+    feat_cols = [c for c in df.columns if c not in {"province", "year", "station_id"}]
+    agg = df.groupby(["province", "year"], as_index=False)[feat_cols].mean()
+    agg["n_stations"] = (
+        df.groupby(["province", "year"])["station_id"].nunique().reset_index(drop=True)
+    )
+    return agg
 
 def build_training_data(cfg: Config | None = None) -> TrainingData:
     """Join weather features to StatCan (and optional AAFC) yields."""
@@ -91,11 +102,12 @@ def build_training_data(cfg: Config | None = None) -> TrainingData:
 
     df = feats.merge(yields, on=["province", "year"], how="inner")
 
-    meta_cols = ["province", "year", "station_id", "completeness", "yield_source"]
+    meta_cols = ["province", "year", "n_stations", "completeness", "yield_source"]
     # Weather features + `year` as a trend proxy: canola yields carry a strong
     # upward technology/genetics signal over time that weather alone can't explain.
     weather_feats = [
-        c for c in feats.columns if c not in {"province", "year", "station_id", "completeness"}
+        c for c in feats.columns
+        if c not in {"province", "year", "n_stations", "completeness"}
     ]
     feature_cols = weather_feats + ["year"]
     return TrainingData(
