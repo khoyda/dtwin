@@ -114,7 +114,7 @@ def load_season_frames(cfg: Config) -> dict[tuple[str, int, int], tuple[pd.DataF
     ds = cfg["data_sources"]
     cache = cfg.path("data_raw") / "eccc"
     frames: dict[tuple[str, int, int], tuple[pd.DataFrame, float]] = {}
-    for sid, info in ds["eccc"]["stations"].items():
+    for sid, info in eccc.station_map(cfg).items():
         for year in range(ds["start_year"], ds["end_year"] + 1):
             frame = _prepare_season(eccc.fetch_daily(int(sid), year, cache), year)
             if len(frame) < MIN_SEASON_DAYS or frame["tmean_c"].notna().mean() < MIN_COMPLETENESS:

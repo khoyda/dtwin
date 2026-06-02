@@ -24,8 +24,8 @@ def main() -> None:
     cfg = load_config()
     year = int(sys.argv[1]) if len(sys.argv) > 1 else 2020
 
-    # SK station + latitude from config.
-    stations = cfg["data_sources"]["eccc"]["stations"]
+    # First SK station + latitude.
+    stations = eccc.station_map(cfg)
     station_id, info = next(
         (sid, i) for sid, i in stations.items() if i["province"] == "Saskatchewan"
     )

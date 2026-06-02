@@ -139,10 +139,14 @@ one) substantially improves things, confirming the spatial-aggregation hypothesi
 | calibrated RUE (g/MJ)        | 2.11      | **1.57** (realistic)|
 | abs. error after offsets     | 1298      | **565 kg/ha**       |
 
-The inflated RUE under one station was compensating for single-point bias; with five it
-settles into the agronomic 1.2–1.7 range. The volatility ratio is still >1 (a point/aggregate
-sim remains more variable than a whole province), so **more stations per province** would help
-further, as would validating against **sub-provincial (SCIC/MASC RM-level)** yields.
+The inflated RUE under one station was compensating for single-point bias; with multiple
+stations it settles into the agronomic 1.2–1.7 range. Going further to **ten stations per
+province** drives the per-province offsets to ≈0 (level now essentially unbiased), but
+interannual **skill plateaus** — anomaly correlation stays ~0.39 and the volatility ratio
+does not fall below ~2 (the added dry-region stations are individually more variable). This
+is the **provincial-scale ceiling**: more stations fix the *level* but not the *pattern*.
+Breaking through needs validation at a scale where local weather maps to local yield —
+i.e. **sub-provincial (SCIC/MASC RM-level)** yields.
 
 ## Real data pipeline
 
@@ -150,11 +154,16 @@ further, as would validating against **sub-provincial (SCIC/MASC RM-level)** yie
 fits the configured model:
 
 - **Weather — ECCC** ([`data/eccc.py`](src/canola_dt/data/eccc.py)): daily climate
-  data pulled from the Environment & Climate Change Canada bulk endpoint for **five
-  long-record stations per Prairie province** (15 total), spread across each province's
-  canola belt and verified for completeness, cached per station-year. Growing-season
-  (May 1–Sep 30) features are aggregated to a province-year mean (the spatial average a
-  provincial yield represents) via the same twin used at inference.
+  data pulled from the Environment & Climate Change Canada bulk endpoint for **ten
+  long-record stations per Prairie province** (30 total), selected by
+  `scripts/discover_stations.py` (spread across each province's canola belt, verified for
+  completeness) and written to `config/stations.generated.yaml`, cached per station-year.
+  Growing-season (May 1–Sep 30) features are aggregated to a province-year mean (the
+  spatial average a provincial yield represents) via the same twin used at inference.
+
+  ```powershell
+  python scripts/discover_stations.py --per-province 10   # (re)select the station set
+  ```
 - **Yield — StatCan** ([`data/statcan.py`](src/canola_dt/data/statcan.py)): canola
   *average yield (kg/ha)* by province by year from Table 32-10-0359, via the Web Data
   Service full-table download.
@@ -187,10 +196,10 @@ local weather (the AAFC/SCIC path above).
 - [x] Historical yield join (StatCan) and model training (CV R² ≈ 0.59)
 - [x] APSIM-style mechanistic crop model (phenology, RUE biomass, layered soil water, yield)
 - [x] Calibrate process-model parameters vs trend-adjusted StatCan yields (level + pattern)
-- [x] Multi-point simulation per province (5 stations each; volatility 3.5×→2.16×, corr→0.39)
-- [ ] Add yet more stations / weight by canola area to push volatility ratio toward 1
+- [x] Multi-point simulation per province (10 stations each; offsets→≈0, corr plateaus ~0.39)
+- [ ] Sub-provincial AAFC/SCIC (SCIC/MASC RM-level) yields matched to local weather **(next)**
 - [ ] Use process-model outputs (biomass, LAI, water stress) as features for the ML model
-- [ ] Sub-provincial AAFC/SCIC yields matched to local weather (weather-driven model)
+- [ ] Area-weight stations / RM aggregation toward provincial totals
 - [ ] Data assimilation step (Kalman/EnKF) to correct simulated state
 
 ## Key references

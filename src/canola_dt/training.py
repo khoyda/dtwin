@@ -44,7 +44,7 @@ def build_weather_features(cfg: Config) -> pd.DataFrame:
     twin = CanolaDigitalTwin(cfg)  # no model: used purely for feature assembly
 
     rows: list[dict] = []
-    for station_id, info in ds["eccc"]["stations"].items():
+    for station_id, info in eccc.station_map(cfg).items():
         for year in range(ds["start_year"], ds["end_year"] + 1):
             weather = eccc.growing_season_weather(
                 int(station_id), year, cache, season_start=s_start, season_end=s_end

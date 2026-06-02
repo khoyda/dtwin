@@ -17,8 +17,13 @@ import urllib.request
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from canola_dt.data.ingest import WEATHER_COLUMNS
+
+# Stations discovered by scripts/discover_stations.py are written here and, if present,
+# take precedence over the inline list in config.yaml.
+GENERATED_STATIONS = "stations.generated.yaml"
 
 BULK_URL = (
     "https://climate.weather.gc.ca/climate_data/bulk_data_e.html"
@@ -58,6 +63,32 @@ def load_station_inventory(cache_dir: str | Path) -> pd.DataFrame:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(_http_get(INVENTORY_URL))
     return pd.read_csv(path, skiprows=3, low_memory=False)
+
+
+def station_map(cfg) -> dict[int, dict]:
+    """Station_id -> {province, name, lat, lon}, preferring the generated file.
+
+    If ``config/stations.generated.yaml`` exists (written by the discovery script)
+    it is used; otherwise the inline ``data_sources.eccc.stations`` from config.yaml.
+    """
+    generated = cfg.root / "config" / GENERATED_STATIONS
+    if generated.exists():
+        raw = yaml.safe_load(generated.read_text(encoding="utf-8")) or {}
+    else:
+        raw = cfg["data_sources"]["eccc"]["stations"]
+    return {int(k): v for k, v in raw.items()}
+
+
+def season_completeness_for(station_id: int, years, cache_dir: str | Path,
+                            season_start=(5, 1), season_end=(9, 30)) -> tuple[float, float]:
+    """(min, mean) growing-season completeness across ``years`` for a station."""
+    cs = [
+        season_completeness(
+            growing_season_weather(int(station_id), y, cache_dir, season_start, season_end)
+        )
+        for y in years
+    ]
+    return (min(cs), sum(cs) / len(cs)) if cs else (0.0, 0.0)
 
 
 def fetch_daily(station_id: int, year: int, cache_dir: str | Path) -> pd.DataFrame:
