@@ -174,11 +174,32 @@ fits the configured model:
   CSV — set `data_sources.aafc.yield_csv` and see that module's docstring for the schema.
 
 **Current result (1995–2023, 3 provinces, 87 samples):** 5-fold CV R² ≈ **0.62**, MAE ≈
-**200 kg/ha** (~11% of the ~1830 kg/ha mean). The dominant feature is `year` — canola
+**197 kg/ha** (~11% of the ~1830 kg/ha mean). The dominant feature is `year` — canola
 yields carry a strong upward technology/genetics trend that weather can't explain;
 weather features (water stress, dry days, heat-stress days, precip) add the remaining
 signal. To make *weather* the primary driver, train on sub-provincial yields matched to
 local weather (the AAFC/SCIC path above).
+
+### Coupling the process model into the ML model
+
+The calibrated APSIM-style model's outputs (simulated yield, biomass, max LAI, harvest
+index, phenology timing, water stress, water fluxes) are averaged per province-year and
+added as `pm_*` features ([`training.py`](src/canola_dt/training.py) `build_process_features`),
+unifying the twin's mechanistic and statistical halves. Feature-layer ablation (5-fold CV R²):
+
+| feature set                | CV R² |
+|----------------------------|-------|
+| `year` only (trend)        | 0.535 |
+| `year` + weather features  | 0.611 |
+| `year` + **process only**  | **0.603** |
+| `year` + weather + process | **0.625** |
+
+The process-model outputs **alone nearly match the hand-crafted weather features** (0.603 vs
+0.611) — the mechanistic model is a compact, physically-grounded summary of the weather→yield
+relationship — and combining both is best. The simulated yield's own detrended correlation with
+observed yield (≈0.40) is consistent with the calibration. At provincial scale the gains are
+modest because the technology trend dominates; the coupling should matter more at the
+sub-provincial scale where weather drives a larger share of the variance.
 
 ## Data sources (suggested)
 
@@ -230,9 +251,10 @@ extending to **Manitoba MASC** RM yields.
 - [x] Calibrate process-model parameters vs trend-adjusted StatCan yields (level + pattern)
 - [x] Multi-point simulation per province (10 stations each; offsets→≈0, corr plateaus ~0.39)
 - [x] Sub-provincial validation vs SK SCIC RM-level yields (local corr 0.37 > provincial 0.30)
+- [x] Couple process-model outputs (yield, biomass, LAI, water stress, timing) into ML features
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields
-- [ ] Use process-model outputs (biomass, LAI, water stress) as features for the ML model
+- [ ] Sub-provincial (RM-level) ML model: local weather + process features vs SCIC yields
 - [ ] Data assimilation step (Kalman/EnKF) to correct simulated state
 
 ## Key references

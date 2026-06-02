@@ -34,13 +34,32 @@ def main() -> None:
     print(f"  yield range kg/ha : {data.y.min():.0f} - {data.y.max():.0f} "
           f"(mean {data.y.mean():.0f})")
 
-    print("\n== Training model ==")
+    # Ablation: how much does each feature layer add? In particular, can the coupled
+    # process-model (pm_*) outputs stand in for the hand-crafted weather features?
+    pm_cols = [c for c in data.X.columns if c.startswith("pm_")]
+    twin_cols = [c for c in data.X.columns if c not in pm_cols and c != "year"]
+
+    def cv_r2(cols):
+        m = YieldModel(cfg.model).cross_validate(data.X[cols], data.y)
+        return m["cv_r2_mean"], m["cv_r2_std"]
+
+    print("\n== Ablation: feature layers (5-fold CV R^2) ==")
+    for label, cols in [
+        ("year only (trend)", ["year"]),
+        ("year + twin weather", ["year"] + twin_cols),
+        ("year + process (pm_)", ["year"] + pm_cols),
+        ("year + twin + process", ["year"] + twin_cols + pm_cols),
+    ]:
+        r2, sd = cv_r2(cols)
+        print(f"  {label:<26}: {r2:.3f} +/- {sd:.3f}")
+    full = YieldModel(cfg.model).cross_validate(data.X, data.y)
+
+    print("\n== Training full model ==")
     model = YieldModel(cfg.model)
-    cv = model.cross_validate(data.X, data.y)
     metrics = model.fit(data.X, data.y)
     print(f"  model type        : {cfg.model.get('type')}")
-    print(f"  {cv['n_splits']}-fold CV R^2     : {cv['cv_r2_mean']:.3f} +/- {cv['cv_r2_std']:.3f}")
-    print(f"  {cv['n_splits']}-fold CV MAE     : {cv['cv_mae_mean']:.1f} kg/ha")
+    print(f"  {full['n_splits']}-fold CV R^2     : {full['cv_r2_mean']:.3f} +/- {full['cv_r2_std']:.3f}")
+    print(f"  {full['n_splits']}-fold CV MAE     : {full['cv_mae_mean']:.1f} kg/ha")
     print(f"  holdout R^2       : {metrics['r2']:.3f}  (single {metrics['n_test']}-row split)")
     print(f"  holdout MAE       : {metrics['mae_kg_ha']:.1f} kg/ha")
 

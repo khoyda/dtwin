@@ -14,14 +14,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
+from canola_dt import calibration as cal
 from canola_dt.config import Config, load_config
 from canola_dt.data import aafc, eccc, statcan
 from canola_dt.models.yield_model import YieldModel
+from canola_dt.simulation.process_model import CanolaCropModel, CanolaParameters
 from canola_dt.simulation.twin import CanolaDigitalTwin
 
 MIN_SEASON_COMPLETENESS = 0.80  # drop province-years with too much missing weather
+
+# APSIM-style process-model summary outputs surfaced as ML features (prefix pm_).
+PM_SUMMARY_KEYS = {
+    "yield_kg_ha": "pm_yield",
+    "total_biomass_g_m2": "pm_biomass",
+    "harvest_index": "pm_hi",
+    "max_lai": "pm_max_lai",
+    "days_to_flowering": "pm_days_to_flowering",
+    "days_to_maturity": "pm_days_to_maturity",
+    "flowering_heat_days": "pm_flower_heat",
+    "mean_flowering_water_stress": "pm_water_stress",
+    "season_transp_mm": "pm_transp",
+    "season_soil_evap_mm": "pm_soil_evap",
+}
 
 
 @dataclass
@@ -69,11 +86,43 @@ def build_weather_features(cfg: Config) -> pd.DataFrame:
     )
     return agg
 
-def build_training_data(cfg: Config | None = None) -> TrainingData:
-    """Join weather features to StatCan (and optional AAFC) yields."""
+def build_process_features(cfg: Config, params: CanolaParameters | None = None) -> pd.DataFrame:
+    """Calibrated APSIM-style process-model outputs, averaged per province-year.
+
+    Runs the mechanistic crop model per station-year (May–Oct window) and aggregates
+    its summary (simulated yield, biomass, LAI, harvest index, phenology timing, water
+    stress, water fluxes) to a province-year mean — the same spatial aggregation used
+    for the weather features. These ``pm_*`` columns couple the process model into the
+    statistical model.
+    """
+    params = params or CanolaParameters.from_calibrated(cfg)
+    frames = cal.load_season_frames(cfg)
+
+    rows: list[dict] = []
+    for (province, _station_id, year), (frame, lat) in frames.items():
+        s = CanolaCropModel(params).run(frame, lat).summary
+        row = {"province": province, "year": year,
+               "pm_frac_matured": float(bool(s["reached_maturity"]))}
+        for key, name in PM_SUMMARY_KEYS.items():
+            v = s.get(key)
+            row[name] = float(v) if v is not None else np.nan
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+    agg = df.groupby(["province", "year"], as_index=False).mean(numeric_only=True)
+    pm_cols = [c for c in agg.columns if c.startswith("pm_")]
+    # e.g. days_to_maturity is NaN when a station never matured -> fill with column mean.
+    agg[pm_cols] = agg[pm_cols].fillna(agg[pm_cols].mean())
+    return agg
+
+
+def build_training_data(cfg: Config | None = None, include_process: bool = True) -> TrainingData:
+    """Join weather features (+ optional process-model features) to StatCan yields."""
     cfg = cfg or load_config()
     ds = cfg["data_sources"]
     feats = build_weather_features(cfg)
+    if include_process:
+        feats = feats.merge(build_process_features(cfg), on=["province", "year"], how="left")
 
     yields = statcan.load_canola_yield(
         pid=ds["statcan"]["table_pid"],
