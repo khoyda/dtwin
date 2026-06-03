@@ -21,10 +21,21 @@ from canola_dt.advisory.wheat_agronomy import (
     WheatGrowthStage,
 )
 from canola_dt.advisory.wheat_state import WheatFieldState
+from canola_dt import fertility as fert
 from canola_dt.data.aafc import WHEAT_BU_AC_TO_KG_HA
 from canola_dt.simulation.wheat_model import WheatCropModel, WheatParameters
 
 _S = AlertSeverity
+
+
+def _applied_nutrients(state: WheatFieldState) -> dict[str, float]:
+    return {"N": state.n_applied_kg_per_ha, "P2O5": state.p2o5_applied_kg_per_ha,
+            "K2O": state.k2o_applied_kg_per_ha, "S": state.s_applied_kg_per_ha}
+
+
+def _soil_supply(state: WheatFieldState) -> dict[str, float]:
+    return {"N": state.soil_available_n_kg_per_ha, "P2O5": state.soil_available_p2o5_kg_per_ha,
+            "K2O": state.soil_available_k2o_kg_per_ha, "S": state.soil_available_s_kg_per_ha}
 
 
 class WheatAdvisoryEngine:
@@ -60,19 +71,60 @@ class WheatAdvisoryEngine:
         return alerts, [a.recommendation for a in alerts if a.recommendation]
 
     def update_yield(self, state: WheatFieldState, weather, latitude: float | None = None):
+        """Forecast yield = min(biophysical, nutrient-limited) x management modifiers.
+
+        Liebig's law: the water/weather-limited yield from the process model is capped by
+        the nutrient-limited yield (N/P/K/S) before the population/rotation modifiers. N is
+        handled by the nutrient ceiling, so it is dropped from the management modifiers.
+        """
         lat = latitude if latitude is not None else state.latitude
         bio = self.crop_model.run(weather, lat).summary["yield_kg_ha"]
-        mods = self._management_modifiers(state)
-        kg_ha = bio * mods["combined"]
+
+        nl = fert.nutrient_limited_yield(_applied_nutrients(state), _soil_supply(state),
+                                         params=fert.wheat_nutrient_parameters())
+        nutrient_ceiling = nl.yield_t_ha * 1000.0
+        attainable = min(bio, nutrient_ceiling)
+        limiting = nl.limiting_nutrient if nutrient_ceiling < bio else None
+
+        mods = self._management_modifiers(state, include_nitrogen=False)
+        kg_ha = attainable * mods["combined"]
         state.yield_potential_t_ha = round(kg_ha / 1000.0, 2)
         state.yield_potential_bu_ac = round(kg_ha / WHEAT_BU_AC_TO_KG_HA, 1)
         state.estimated_protein_pct = self._estimate_protein(state, kg_ha)
         state.yield_breakdown = {
-            "biophysical_kg_ha": round(bio, 1), "population_mod": mods["population"],
-            "rotation_mod": mods["rotation"], "nitrogen_mod": mods["nitrogen"],
+            "biophysical_kg_ha": round(bio, 1),
+            "nutrient_ceiling_kg_ha": round(nutrient_ceiling, 1),
+            "limiting_factor": limiting if limiting else "water/weather",
+            "population_mod": mods["population"], "rotation_mod": mods["rotation"],
             "final_kg_ha": round(kg_ha, 1), "estimated_protein_pct": state.estimated_protein_pct,
         }
         return state.yield_breakdown
+
+    def fertility_report(self, state: WheatFieldState, target_yield_t_ha: float) -> dict[str, Any]:
+        """Fertilizer recommendation + nutrient-limited yield + deficiency alerts."""
+        wp = fert.wheat_nutrient_parameters()
+        soil, applied = _soil_supply(state), _applied_nutrients(state)
+        rec = fert.fertilizer_recommendation(target_yield_t_ha, soil, wp)
+        nl = fert.nutrient_limited_yield(applied, soil, wp)
+        demand = fert.crop_demand(target_yield_t_ha, wp)
+        alerts = []
+        for n in ("N", "S", "P2O5", "K2O"):
+            available = soil[n] + applied[n]
+            if available < demand[n]:
+                note = {"N": "yield and protein both suffer; protein <13.5% signals N shortfall",
+                        "S": "wheat S deficiency shows on the NEWEST leaves",
+                        "P2O5": "seed-placed MAP starter recommended",
+                        "K2O": "usually only limiting on sandy/organic soils"}[n]
+                alerts.append(f"{n}: available {available:.0f} < crop uptake {demand[n]:.0f} kg/ha "
+                              f"for {target_yield_t_ha} t/ha — {note}")
+        return {
+            "target_yield_t_ha": target_yield_t_ha,
+            "recommendation_kg_ha": {n: rec[n]["recommended_kg_ha"] for n in rec},
+            "nutrient_limited_yield_t_ha": nl.yield_t_ha,
+            "limiting_nutrient": nl.limiting_nutrient,
+            "supported_yield_t_ha": nl.supported_t_ha,
+            "deficiency_alerts": alerts,
+        }
 
     def run_season(self, state: WheatFieldState, sensor_readings: list[dict],
                    weather=None, latitude: float | None = None) -> dict[str, Any]:
@@ -87,7 +139,8 @@ class WheatAdvisoryEngine:
 
     # ── Yield helpers ─────────────────────────────────────────────────────────
 
-    def _management_modifiers(self, state: WheatFieldState) -> dict[str, float]:
+    def _management_modifiers(self, state: WheatFieldState,
+                              include_nitrogen: bool = True) -> dict[str, float]:
         p = self.params
         pop = state.plant_population_per_m2
         if pop <= 0:
@@ -101,12 +154,14 @@ class WheatAdvisoryEngine:
         else:
             pop_mod = 0.70
         rotation_mod = p.preceding_crop_yield_index.get(state.preceding_crop.value, 1.0)
-        if state.n_applied_kg_per_ha >= p.N_following_stubble_kg_per_ha_max:
-            n_mod = 1.0
-        elif state.n_applied_kg_per_ha >= p.N_following_stubble_kg_per_ha_min:
-            n_mod = 0.95
-        else:
-            n_mod = 0.88
+        n_mod = 1.0
+        if include_nitrogen:
+            if state.n_applied_kg_per_ha >= p.N_following_stubble_kg_per_ha_max:
+                n_mod = 1.0
+            elif state.n_applied_kg_per_ha >= p.N_following_stubble_kg_per_ha_min:
+                n_mod = 0.95
+            else:
+                n_mod = 0.88
         return {"population": round(pop_mod, 3), "rotation": round(rotation_mod, 3),
                 "nitrogen": round(n_mod, 3),
                 "combined": round(pop_mod * rotation_mod * n_mod, 4)}

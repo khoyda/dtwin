@@ -84,6 +84,9 @@ def main() -> None:
     print("\n-- Wheat N requirement (4 t/ha, 13.5% protein) --")
     print(json.dumps(wheat_n_requirement(4.0, 13.5, soil_n_kg_per_ha=40), indent=2))
 
+    print("\n-- Fertility report (N/P/K/S for a 4 t/ha target) --")
+    print(json.dumps(engine.fertility_report(state, target_yield_t_ha=4.0), indent=2))
+
 
 if __name__ == "__main__":
     main()

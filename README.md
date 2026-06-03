@@ -283,13 +283,22 @@ layer for spring wheat: `WheatFieldState` (JSON-serialisable) + `WheatAdvisoryEn
 favourable-conditions check, strobilurin ban from boot), **wheat-midge** susceptibility window
 (boot→anthesis) with the May-rainfall emergence check, **leaf-disease T1/T2** (flag leaf / head
 emergence), aphid/lodging/rotation thresholds, and **N-for-protein** guidance. Yield comes from
-the calibrated wheat process model × management modifiers (population, rotation, N), and
-**protein** is estimated from N relative to the yield-maximizing rate. Includes wheat
-seeding-rate (from TKW + target population) and N-requirement calculators.
+the calibrated wheat process model, **capped by the nutrient-limited yield** (Liebig's law over
+N/P/K/S, via [`fertility.py`](src/canola_dt/fertility.py) `wheat_nutrient_parameters`), then
+scaled by management modifiers (population, rotation). **Protein** is estimated from N relative
+to the yield-maximizing rate. `fertility_report()` gives the N/P/K/S fertilizer recommendation,
+the limiting nutrient and deficiency alerts; there are also wheat seeding-rate (TKW + target
+population) and N-requirement calculators.
 
 ```powershell
-python scripts/run_wheat_advisory.py   # Zadoks alerts + calibrated yield & protein
+python scripts/run_wheat_advisory.py   # Zadoks alerts + nutrient-limited yield, protein, fertility
 ```
+
+The yield forecast respects **Liebig's law of the minimum**: `yield = min(water/weather, N, P, K, S)`.
+A nice emergent result — in a dry (water-limited) season, low N does *not* further cut yield (it
+still hits protein), matching the agronomic rule that *wheat does not respond to N in dry years*;
+but sulphur starvation, to which wheat is sensitive, caps the forecast and is reported as the
+limiting factor.
 
 ## Sub-provincial validation (Saskatchewan)
 
@@ -337,7 +346,9 @@ extending to **Manitoba MASC** RM yields.
 - [x] Second crop: spring-wheat process model + calibration (anomaly corr 0.53 > canola 0.39)
 - [x] Wheat sub-provincial validation vs SK RM spring-wheat (local 0.34 < provincial 0.41)
 - [x] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein, protein estimate)
-- [ ] Gridded weather per RM (NASA POWER / ERA5); MB MASC; wheat fertility/N-protein model
+- [x] Wheat fertility (N/P/K/S) + nutrient-limited yield forecast (Liebig) in the wheat advisory
+- [ ] Wire the canola fertility model into the canola advisory yield (parity with wheat)
+- [ ] Gridded weather per RM (NASA POWER / ERA5); MB MASC
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields
 - [ ] Sub-provincial (RM-level) ML model: local weather + process features vs SCIC yields

@@ -33,6 +33,12 @@ class WheatFieldState:
     p2o5_applied_kg_per_ha: float = 40.0
     s_applied_kg_per_ha: float = 12.0
     k2o_applied_kg_per_ha: float = 0.0
+    # Plant-available soil supply (kg/ha) for the nutrient-limited yield ceiling.
+    # K defaults high — most prairie soils are K-sufficient (override for sandy/organic).
+    soil_available_n_kg_per_ha: float = 30.0
+    soil_available_p2o5_kg_per_ha: float = 25.0
+    soil_available_k2o_kg_per_ha: float = 300.0
+    soil_available_s_kg_per_ha: float = 8.0
 
     # Current state (updated by sensor readings)
     day_of_season: int = 0

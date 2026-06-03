@@ -47,10 +47,32 @@ NUTRIENTS = ("N", "P2O5", "K2O", "S")
 
 @dataclass
 class NutrientParameters:
-    """Canola macronutrient coefficients (kg per tonne of seed) and strategy."""
+    """Macronutrient coefficients (kg per tonne of seed/grain) and strategy.
+
+    Defaults are canola; use :func:`wheat_nutrient_parameters` for spring wheat.
+    """
     uptake_kg_per_t: dict[str, float] = field(default_factory=lambda: dict(DEFAULT_UPTAKE))
     removal_kg_per_t: dict[str, float] = field(default_factory=lambda: dict(DEFAULT_REMOVAL))
     strategy: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_STRATEGY))
+
+
+# Spring-wheat coefficients (kg per tonne of grain). Grain is ~2.4% N at 13.5% protein,
+# so N removal ~22 kg/t; total uptake (grain + straw) is higher. P/K maintained by removal
+# (prairie soils are typically K-rich; straw returns most K), N/S fed within season.
+WHEAT_UPTAKE = {"N": 29.0, "P2O5": 11.5, "K2O": 20.0, "S": 3.5}
+WHEAT_REMOVAL = {"N": 22.0, "P2O5": 10.0, "K2O": 5.5, "S": 1.8}
+
+
+def canola_nutrient_parameters() -> "NutrientParameters":
+    """Canola macronutrient parameters (the defaults)."""
+    return NutrientParameters()
+
+
+def wheat_nutrient_parameters() -> "NutrientParameters":
+    """Spring-wheat macronutrient parameters."""
+    return NutrientParameters(uptake_kg_per_t=dict(WHEAT_UPTAKE),
+                              removal_kg_per_t=dict(WHEAT_REMOVAL),
+                              strategy=dict(DEFAULT_STRATEGY))
 
 
 def ppm_to_kg_ha(ppm: float, depth_cm: float = 15.0, bulk_density_kg_m3: float = 1300.0) -> float:
