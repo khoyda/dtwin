@@ -46,19 +46,29 @@ def _get(url: str) -> bytes:
 
 # --- data loaders (cached) ---------------------------------------------------
 
-def load_rm_canola_yields(cache_dir: str | Path) -> pd.DataFrame:
-    """SK RM canola yields -> columns ``rmno, year, yield_kg_ha`` (from bu/ac)."""
+def load_rm_crop_yields(cache_dir: str | Path, crop_column: str,
+                        bu_ac_to_kg_ha: float) -> pd.DataFrame:
+    """SK RM yields for one crop column -> ``rmno, year, yield_kg_ha`` (from bu/ac).
+
+    The dashboard export reports each crop in bushels/acre; the bushel weight (and so
+    the kg/ha factor) differs by crop (canola 50 lb, wheat 60 lb).
+    """
     path = Path(cache_dir) / "sk_rm_yields.csv"
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(_get(RM_YIELDS_CSV))
     df = pd.read_csv(path)
-    out = df[["Year", "RM", "Canola"]].dropna(subset=["Canola"]).copy()
+    out = df[["Year", "RM", crop_column]].dropna(subset=[crop_column]).copy()
     out.columns = ["year", "rmno", "yield_bu_ac"]
     out["year"] = out["year"].astype(int)
     out["rmno"] = out["rmno"].astype(int)
-    out["yield_kg_ha"] = out["yield_bu_ac"] * CANOLA_BU_AC_TO_KG_HA
+    out["yield_kg_ha"] = out["yield_bu_ac"] * bu_ac_to_kg_ha
     return out[["rmno", "year", "yield_kg_ha"]].reset_index(drop=True)
+
+
+def load_rm_canola_yields(cache_dir: str | Path) -> pd.DataFrame:
+    """SK RM canola yields -> columns ``rmno, year, yield_kg_ha`` (from bu/ac)."""
+    return load_rm_crop_yields(cache_dir, "Canola", CANOLA_BU_AC_TO_KG_HA)
 
 
 def load_rm_centroids(cache_dir: str | Path) -> pd.DataFrame:

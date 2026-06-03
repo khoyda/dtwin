@@ -29,6 +29,8 @@ import pandas as pd
 
 # Canola: 1 bushel = 50 lb = 22.6796 kg; 1 acre = 0.404686 ha  ->  1 bu/ac = 56.06 kg/ha.
 CANOLA_BU_AC_TO_KG_HA = 22.6796 / 0.404686
+# Wheat: 1 bushel = 60 lb = 27.2155 kg  ->  1 bu/ac = 67.25 kg/ha.
+WHEAT_BU_AC_TO_KG_HA = 27.2155 / 0.404686
 
 
 def _to_kg_ha(value: float, unit: str) -> float:

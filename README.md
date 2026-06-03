@@ -265,9 +265,15 @@ correlation **0.50 → 0.53**, volatility ratio **1.99×**, bias ≈ 0 — *bett
 canola* (0.39), consistent with wheat yield tracking growing-season weather more directly.
 Calibrated `rue` lands high (2.06, an effective value absorbing some structural
 under-production) — the same pattern canola showed before its station set was expanded; adding
-stations / refining canopy would bring it toward the agronomic 1.3–1.6 range. SK RM-level wheat
-yields are also available (the SCIC dashboard has a Spring Wheat column) for the same
-sub-provincial validation as canola.
+stations / refining canopy would bring it toward the agronomic 1.3–1.6 range.
+
+**Sub-provincial validation (`scripts/validate_wheat_subprovincial.py`)** runs the same SK
+RM-level check as canola, against the dashboard's "Spring Wheat" column (60-lb bushel).
+Result — *opposite to canola*: local RM matching does **not** beat provincial
+(local anomaly corr **0.34** vs provincial **0.41**). Wheat already has strong provincial-scale
+weather skill, and single-RM wheat yields are noisier (variety, midge, FHB, protein-driven
+management), so the provincial average is the cleaner target. Canola was the reverse — its weak
+provincial signal meant local matching *added* skill. A genuine cross-crop difference.
 
 ## Sub-provincial validation (Saskatchewan)
 
@@ -313,8 +319,8 @@ extending to **Manitoba MASC** RM yields.
 - [x] Couple process-model outputs (yield, biomass, LAI, water stress, timing) into ML features
 - [x] Advisory layer: Canola Council agronomic alerts + calibrated process-model yield
 - [x] Second crop: spring-wheat process model + calibration (anomaly corr 0.53 > canola 0.39)
+- [x] Wheat sub-provincial validation vs SK RM spring-wheat (local 0.34 < provincial 0.41)
 - [ ] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein) from the wheat spec
-- [ ] Wheat sub-provincial validation vs SK SCIC RM spring-wheat yields
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields
 - [ ] Sub-provincial (RM-level) ML model: local weather + process features vs SCIC yields
