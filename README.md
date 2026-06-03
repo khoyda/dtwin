@@ -225,10 +225,13 @@ harvest readiness) plus seeding-rate and N-requirement calculators and a swath v
 straight-cut recommender.
 
 Crucially, **yield is not a heuristic here** — it comes from the calibrated biophysical
-process model, multiplied by the management factors the process model doesn't represent
-(plant density, preceding-crop rotation, N adequacy); heat and water stress are left to the
-process model to avoid double-counting. This unites the mechanistic core with the agronomic
-advisory front end:
+process model, **capped by the nutrient-limited yield** (Liebig over N/P/K/S via
+[`fertility.py`](src/canola_dt/fertility.py) `canola_nutrient_parameters`), then multiplied by
+the management factors the process model doesn't represent (plant density, preceding-crop
+rotation); heat and water stress are left to the process model to avoid double-counting.
+`fertility_report()` gives the N/P/K/S recommendation, limiting nutrient and deficiency alerts —
+canola's high **sulphur** demand means S often limits. This unites the mechanistic core with the
+agronomic advisory front end:
 
 ```powershell
 python scripts/run_advisory.py   # alerts over a sensor season + calibrated yield on real weather
@@ -347,7 +350,7 @@ extending to **Manitoba MASC** RM yields.
 - [x] Wheat sub-provincial validation vs SK RM spring-wheat (local 0.34 < provincial 0.41)
 - [x] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein, protein estimate)
 - [x] Wheat fertility (N/P/K/S) + nutrient-limited yield forecast (Liebig) in the wheat advisory
-- [ ] Wire the canola fertility model into the canola advisory yield (parity with wheat)
+- [x] Wire the canola fertility model into the canola advisory yield (parity with wheat)
 - [ ] Gridded weather per RM (NASA POWER / ERA5); MB MASC
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields

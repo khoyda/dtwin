@@ -50,7 +50,14 @@ class CanolaFieldState:
     seed_depth_cm: float = 1.5
     n_applied_kg_per_ha: float = 150.0
     p2o5_applied_kg_per_ha: float = 40.0
+    s_applied_kg_per_ha: float = 15.0       # canola is S-demanding
+    k2o_applied_kg_per_ha: float = 0.0
     n_seed_row_kg_per_ha: float = 0.0
+    # Plant-available soil supply (kg/ha) for the nutrient-limited yield ceiling.
+    soil_available_n_kg_per_ha: float = 30.0
+    soil_available_p2o5_kg_per_ha: float = 20.0
+    soil_available_k2o_kg_per_ha: float = 300.0  # prairie soils usually K-sufficient
+    soil_available_s_kg_per_ha: float = 10.0
 
     # --- Current state (updated by sensor readings) ---
     day_of_season: int = 0

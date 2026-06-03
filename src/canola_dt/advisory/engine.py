@@ -22,8 +22,19 @@ from canola_dt.advisory.agronomy import (
     PrecedingCrop,
 )
 from canola_dt.advisory.state import Alert, CanolaFieldState
+from canola_dt import fertility as fert
 from canola_dt.data.aafc import CANOLA_BU_AC_TO_KG_HA
 from canola_dt.simulation.process_model import CanolaCropModel, CanolaParameters
+
+
+def _applied_nutrients(state: CanolaFieldState) -> dict[str, float]:
+    return {"N": state.n_applied_kg_per_ha, "P2O5": state.p2o5_applied_kg_per_ha,
+            "K2O": state.k2o_applied_kg_per_ha, "S": state.s_applied_kg_per_ha}
+
+
+def _soil_supply(state: CanolaFieldState) -> dict[str, float]:
+    return {"N": state.soil_available_n_kg_per_ha, "P2O5": state.soil_available_p2o5_kg_per_ha,
+            "K2O": state.soil_available_k2o_kg_per_ha, "S": state.soil_available_s_kg_per_ha}
 
 
 class CanolaAdvisoryEngine:
@@ -74,18 +85,53 @@ class CanolaAdvisoryEngine:
         """
         lat = latitude if latitude is not None else state.latitude
         biophysical_kg_ha = self.crop_model.run(weather, lat).summary["yield_kg_ha"]
-        mods = self._management_modifiers(state)
-        kg_ha = biophysical_kg_ha * mods["combined"]
+
+        # Liebig nutrient-limited ceiling (N/P/K/S); N then drops from management modifiers.
+        nl = fert.nutrient_limited_yield(_applied_nutrients(state), _soil_supply(state),
+                                         params=fert.canola_nutrient_parameters())
+        nutrient_ceiling = nl.yield_t_ha * 1000.0
+        attainable = min(biophysical_kg_ha, nutrient_ceiling)
+        limiting = nl.limiting_nutrient if nutrient_ceiling < biophysical_kg_ha else None
+
+        mods = self._management_modifiers(state, include_nitrogen=False)
+        kg_ha = attainable * mods["combined"]
         state.yield_potential_t_ha = round(kg_ha / 1000.0, 2)
         state.yield_potential_bu_ac = round(kg_ha / CANOLA_BU_AC_TO_KG_HA, 1)
         state.yield_breakdown = {
             "biophysical_kg_ha": round(biophysical_kg_ha, 1),
+            "nutrient_ceiling_kg_ha": round(nutrient_ceiling, 1),
+            "limiting_factor": limiting if limiting else "water/weather",
             "density_mod": mods["density"],
             "rotation_mod": mods["rotation"],
-            "nitrogen_mod": mods["nitrogen"],
             "final_kg_ha": round(kg_ha, 1),
         }
         return state.yield_breakdown
+
+    def fertility_report(self, state: CanolaFieldState, target_yield_t_ha: float) -> dict[str, Any]:
+        """Fertilizer recommendation + nutrient-limited yield + deficiency alerts (canola)."""
+        cp = fert.canola_nutrient_parameters()
+        soil, applied = _soil_supply(state), _applied_nutrients(state)
+        rec = fert.fertilizer_recommendation(target_yield_t_ha, soil, cp)
+        nl = fert.nutrient_limited_yield(applied, soil, cp)
+        demand = fert.crop_demand(target_yield_t_ha, cp)
+        alerts = []
+        for n in ("N", "S", "P2O5", "K2O"):
+            available = soil[n] + applied[n]
+            if available < demand[n]:
+                note = {"N": "yellowing on older/lower leaves",
+                        "S": "canola is highly S-demanding; deficiency yellows the NEWEST leaves",
+                        "P2O5": "seed-row safe limit ~22 kg/ha; band the rest",
+                        "K2O": "usually only limiting on sandy/organic soils"}[n]
+                alerts.append(f"{n}: available {available:.0f} < crop uptake {demand[n]:.0f} kg/ha "
+                              f"for {target_yield_t_ha} t/ha — {note}")
+        return {
+            "target_yield_t_ha": target_yield_t_ha,
+            "recommendation_kg_ha": {n: rec[n]["recommended_kg_ha"] for n in rec},
+            "nutrient_limited_yield_t_ha": nl.yield_t_ha,
+            "limiting_nutrient": nl.limiting_nutrient,
+            "supported_yield_t_ha": nl.supported_t_ha,
+            "deficiency_alerts": alerts,
+        }
 
     def run_season(
         self,
@@ -106,7 +152,8 @@ class CanolaAdvisoryEngine:
 
     # ── Yield: management modifiers on the biophysical yield ──────────────────
 
-    def _management_modifiers(self, state: CanolaFieldState) -> dict[str, float]:
+    def _management_modifiers(self, state: CanolaFieldState,
+                              include_nitrogen: bool = True) -> dict[str, float]:
         """Density / rotation / N modifiers the process model does not represent."""
         p = self.params
         d = state.plant_density_per_m2
@@ -123,8 +170,10 @@ class CanolaAdvisoryEngine:
 
         rotation_mod = p.preceding_crop_yield_index.get(state.preceding_crop.value, 1.0)
 
-        n_threshold = 100 if state.cultivar_type == CultivarType.HYBRID else 60
-        n_mod = 1.0 if state.n_applied_kg_per_ha >= n_threshold else 0.88
+        n_mod = 1.0
+        if include_nitrogen:
+            n_threshold = 100 if state.cultivar_type == CultivarType.HYBRID else 60
+            n_mod = 1.0 if state.n_applied_kg_per_ha >= n_threshold else 0.88
 
         return {
             "density": round(density_mod, 3),

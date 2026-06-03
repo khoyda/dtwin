@@ -112,6 +112,27 @@ def test_update_yield_uses_process_model():
     assert s.yield_breakdown["biophysical_kg_ha"] > 0
 
 
+def test_canola_sulphur_starvation_caps_forecast():
+    e = CanolaAdvisoryEngine()
+    weather = synthetic_weather(year=2022, n_days=150, seed=1)
+    base = dict(plant_density_per_m2=60, preceding_crop=PrecedingCrop.PEAS,
+                n_applied_kg_per_ha=150, latitude=50.5)
+    adequate = CanolaFieldState(s_applied_kg_per_ha=15, **base)
+    e.update_yield(adequate, weather, 50.5)
+    starved = CanolaFieldState(s_applied_kg_per_ha=0, soil_available_s_kg_per_ha=2, **base)
+    e.update_yield(starved, weather, 50.5)
+    assert starved.yield_potential_t_ha < adequate.yield_potential_t_ha
+    assert starved.yield_breakdown["limiting_factor"] == "S"
+
+
+def test_canola_fertility_report_flags_sulphur():
+    e = CanolaAdvisoryEngine()
+    s = CanolaFieldState(s_applied_kg_per_ha=0, soil_available_s_kg_per_ha=2)
+    report = e.fertility_report(s, target_yield_t_ha=2.5)
+    assert report["limiting_nutrient"] == "S"   # canola high S demand
+    assert any(a.startswith("S:") for a in report["deficiency_alerts"])
+
+
 def test_seeding_rate_calculator():
     r = calculate_seeding_rate(target_density_per_m2=65, thousand_seed_weight_g=5.5)
     assert r["seeds_per_m2_needed"] == pytest.approx(118.2, abs=0.2)

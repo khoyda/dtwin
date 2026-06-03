@@ -103,6 +103,8 @@ def main() -> None:
     print(json.dumps(estimate_n_requirement(3.5, CultivarType.HYBRID), indent=2))
     print("\n-- Harvest strategy --")
     print(json.dumps(get_harvest_strategy(state), indent=2))
+    print("\n-- Fertility report (N/P/K/S for a 2.5 t/ha target) --")
+    print(json.dumps(engine.fertility_report(state, target_yield_t_ha=2.5), indent=2))
 
 
 if __name__ == "__main__":
