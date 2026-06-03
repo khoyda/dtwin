@@ -242,6 +242,33 @@ yield = process_model(weather, soil) x density_mod x rotation_mod x N_mod
 > Note: `advisory/agronomy.py` defines `AgronomyParameters` (threshold constants) — distinct
 > from the biophysical `CanolaParameters` in `simulation/process_model.py`.
 
+## Spring wheat (second crop)
+
+A full second-crop digital twin, reusing the crop-agnostic infrastructure (ECCC weather,
+FAO-56 agro-met, `calibration.load_season_frames`, the detrend/anomaly calibration helpers)
+with wheat-specific biophysics:
+
+- **[`simulation/wheat_model.py`](src/canola_dt/simulation/wheat_model.py)** — `WheatCropModel`:
+  cardinal temps base 0/21/35 °C (spring wheat, no vernalization), Zadoks-aligned stages
+  (emergence → tillering → jointing → heading → anthesis → grain fill → maturity), RUE biomass,
+  layered soil water, harvest index ~0.42 reduced by **grain-fill** heat and water stress.
+- **[`wheat_calibration.py`](src/canola_dt/wheat_calibration.py)** — same three-step calibration
+  (pattern → level → offsets) against StatCan **"Wheat, spring"** yields.
+
+```powershell
+python scripts/run_wheat_model.py 2020        # calibrated wheat yield on real ECCC weather
+python scripts/calibrate_wheat_model.py       # calibrate vs StatCan spring-wheat yields
+```
+
+**Calibration result (1995–2023, 3 provinces, 87 province-years).** Interannual anomaly
+correlation **0.50 → 0.53**, volatility ratio **1.99×**, bias ≈ 0 — *better weather skill than
+canola* (0.39), consistent with wheat yield tracking growing-season weather more directly.
+Calibrated `rue` lands high (2.06, an effective value absorbing some structural
+under-production) — the same pattern canola showed before its station set was expanded; adding
+stations / refining canopy would bring it toward the agronomic 1.3–1.6 range. SK RM-level wheat
+yields are also available (the SCIC dashboard has a Spring Wheat column) for the same
+sub-provincial validation as canola.
+
 ## Sub-provincial validation (Saskatchewan)
 
 [`subprovincial.py`](src/canola_dt/subprovincial.py) + `scripts/validate_subprovincial.py`
@@ -285,6 +312,9 @@ extending to **Manitoba MASC** RM yields.
 - [x] Sub-provincial validation vs SK SCIC RM-level yields (local corr 0.37 > provincial 0.30)
 - [x] Couple process-model outputs (yield, biomass, LAI, water stress, timing) into ML features
 - [x] Advisory layer: Canola Council agronomic alerts + calibrated process-model yield
+- [x] Second crop: spring-wheat process model + calibration (anomaly corr 0.53 > canola 0.39)
+- [ ] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein) from the wheat spec
+- [ ] Wheat sub-provincial validation vs SK SCIC RM spring-wheat yields
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields
 - [ ] Sub-provincial (RM-level) ML model: local weather + process features vs SCIC yields

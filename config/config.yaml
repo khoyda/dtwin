@@ -72,6 +72,7 @@ data_sources:
   statcan:
     table_pid: "32100359"            # Estimated areas, yield, production of crops
     crop: Canola (rapeseed)
+    wheat_crop: Wheat, spring        # StatCan crop name for the wheat digital twin
     yield_disposition: Average yield (kilograms per hectare)
     provinces: [Saskatchewan, Alberta, Manitoba]
 
@@ -88,6 +89,15 @@ process_model:
   kl: 0.10                   # root water-uptake coefficient (drought sensitivity)
   hi_heat_sensitivity: 0.03  # harvest-index loss per flowering heat-stress day
   harvest_index: 0.28        # potential harvest index
+
+wheat_model:
+  # Calibratable parameters for the spring-wheat process model (simulation/wheat_model.py).
+  # Defaults are conventional Prairie spring-wheat values; calibrate_wheat_model.py tunes a
+  # subset vs trend-adjusted StatCan spring-wheat yields -> artifacts/wheat_calibrated_params.json.
+  rue: 1.40                  # radiation-use efficiency, g biomass / MJ PAR
+  kl: 0.10                   # root water-uptake coefficient (drought sensitivity)
+  hi_heat_sensitivity: 0.02  # harvest-index loss per grain-fill heat-stress day
+  harvest_index: 0.42        # potential harvest index (wheat > canola)
 
 model:
   type: random_forest            # random_forest | gradient_boosting | linear
