@@ -275,6 +275,22 @@ weather skill, and single-RM wheat yields are noisier (variety, midge, FHB, prot
 management), so the provincial average is the cleaner target. Canola was the reverse — its weak
 provincial signal meant local matching *added* skill. A genuine cross-crop difference.
 
+### Wheat advisory layer
+
+[`advisory/wheat_engine.py`](src/canola_dt/advisory/wheat_engine.py) mirrors the canola advisory
+layer for spring wheat: `WheatFieldState` (JSON-serialisable) + `WheatAdvisoryEngine` with
+**Zadoks** staging and the wheat-distinct alerts — **FHB** fungicide timing (anthesis Z60–65,
+favourable-conditions check, strobilurin ban from boot), **wheat-midge** susceptibility window
+(boot→anthesis) with the May-rainfall emergence check, **leaf-disease T1/T2** (flag leaf / head
+emergence), aphid/lodging/rotation thresholds, and **N-for-protein** guidance. Yield comes from
+the calibrated wheat process model × management modifiers (population, rotation, N), and
+**protein** is estimated from N relative to the yield-maximizing rate. Includes wheat
+seeding-rate (from TKW + target population) and N-requirement calculators.
+
+```powershell
+python scripts/run_wheat_advisory.py   # Zadoks alerts + calibrated yield & protein
+```
+
 ## Sub-provincial validation (Saskatchewan)
 
 [`subprovincial.py`](src/canola_dt/subprovincial.py) + `scripts/validate_subprovincial.py`
@@ -320,7 +336,8 @@ extending to **Manitoba MASC** RM yields.
 - [x] Advisory layer: Canola Council agronomic alerts + calibrated process-model yield
 - [x] Second crop: spring-wheat process model + calibration (anomaly corr 0.53 > canola 0.39)
 - [x] Wheat sub-provincial validation vs SK RM spring-wheat (local 0.34 < provincial 0.41)
-- [ ] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein) from the wheat spec
+- [x] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein, protein estimate)
+- [ ] Gridded weather per RM (NASA POWER / ERA5); MB MASC; wheat fertility/N-protein model
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields
 - [ ] Sub-provincial (RM-level) ML model: local weather + process features vs SCIC yields
