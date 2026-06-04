@@ -333,6 +333,56 @@ class CanolaAdvisoryEngine:
                 f"variety if reseeding. Minimum {p.rotation_recommended_years}-year canola-free rotation "
                 "required to reduce spore load.",
                 state.day_of_season))
+
+        # Cutworm — seedling / early vegetative
+        if (state.growth_stage in (GrowthStage.GS0_GERMINATION, GrowthStage.GS1_LEAF_DEV)
+                and state.cutworm_larvae_per_m2 >= p.cutworm_threshold_min_per_m2):
+            sev = (AlertSeverity.CRITICAL if state.cutworm_larvae_per_m2 >= p.cutworm_threshold_max_per_m2
+                   else AlertSeverity.WARNING)
+            alerts.append(Alert(
+                sev, "Cutworm",
+                f"Cutworm {state.cutworm_larvae_per_m2:.0f} larvae/m² at the seedling stage meets the economic "
+                f"threshold ({p.cutworm_threshold_min_per_m2:.0f}-{p.cutworm_threshold_max_per_m2:.0f}/m²).",
+                "Scout for bare patches and clipped plants (larvae feed at night). Spot-spray hotspots at "
+                "dusk; a cyantraniliprole seed treatment helps where cutworms are expected.",
+                state.day_of_season))
+
+        # Lygus bug — early pod
+        if (state.growth_stage == GrowthStage.GS7_POD_FILL
+                and state.lygus_per_10_sweeps >= p.lygus_standard_threshold_per_10_sweeps):
+            ctx = ("" if state.lygus_per_10_sweeps >= p.lygus_high_value_threshold_per_10_sweeps
+                   else f" In a high-value, high-yielding, well-watered crop the threshold can be much higher "
+                        f"(~{p.lygus_high_value_threshold_per_10_sweeps}/10 sweeps).")
+            alerts.append(Alert(
+                AlertSeverity.WARNING, "LygusBug",
+                f"Lygus {state.lygus_per_10_sweeps:.0f}/10 sweeps at early pod meets the standard threshold "
+                f"({p.lygus_standard_threshold_per_10_sweeps}/10 sweeps).{ctx}",
+                "Thresholds depend strongly on crop price vs spray cost — confirm the economics first. Sweep "
+                "several field areas; lygus are often heaviest on field edges.",
+                state.day_of_season))
+
+        # Cabbage seedpod weevil — early flowering
+        if (state.growth_stage == GrowthStage.GS5_FLOWERING
+                and state.cabbage_seedpod_weevil_per_10_sweeps >= p.cabbage_seedpod_weevil_threshold_per_10_sweeps):
+            alerts.append(Alert(
+                AlertSeverity.WARNING, "CabbageSeedpodWeevil",
+                f"Cabbage seedpod weevil {state.cabbage_seedpod_weevil_per_10_sweeps:.0f}/10 sweeps at early "
+                f"flowering ≥ threshold ({p.cabbage_seedpod_weevil_threshold_per_10_sweeps:.0f}/10 sweeps).",
+                f"Weevils concentrate on field edges and the earliest-flowering strips — a border/trap-strip "
+                f"spray over <{p.cabbage_seedpod_weevil_spray_field_pct_max:.0f}% of the field often suffices, "
+                "preserving pollinators and beneficials.",
+                state.day_of_season))
+
+        # Bertha armyworm — pod / seed fill (rapid defoliation)
+        if (state.growth_stage in (GrowthStage.GS7_POD_FILL, GrowthStage.GS8_SEED_FILL)
+                and state.leaf_defoliation_pct >= p.bertha_armyworm_defoliation_pct):
+            alerts.append(Alert(
+                AlertSeverity.WARNING, "BerthaArmyworm",
+                f"Defoliation {state.leaf_defoliation_pct:.0f}% at pod/seed fill — bertha armyworm can "
+                "defoliate rapidly and clip pods.",
+                "Scout for larvae low in the canopy; confirm larval size before spraying (large larvae near "
+                "pupation cause little further damage). Use crop-value-based economic thresholds.",
+                state.day_of_season))
         return alerts
 
     # ── Nutrient input checks ─────────────────────────────────────────────────

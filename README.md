@@ -220,9 +220,9 @@ sub-provincial scale where weather drives a larger share of the variance.
 built on Canola Council of Canada agronomic thresholds. `CanolaFieldState` is a
 JSON-serialisable virtual entity updated by perception-layer sensor readings;
 `CanolaAdvisoryEngine` advances growth stage and emits **alerts** (plant density,
-heat/frost/waterlogging, flea beetle, sclerotinia, clubroot, seed-row N/P, rotation,
-harvest readiness) plus seeding-rate and N-requirement calculators and a swath vs
-straight-cut recommender.
+heat/frost/waterlogging, flea beetle, **cutworm, lygus, cabbage seedpod weevil, bertha
+armyworm**, sclerotinia, clubroot, seed-row N/P, rotation, harvest readiness) plus
+seeding-rate and N-requirement calculators and a swath vs straight-cut recommender.
 
 Crucially, **yield is not a heuristic here** — it comes from the calibrated biophysical
 process model, **capped by the nutrient-limited yield** (Liebig over N/P/K/S via

@@ -71,6 +71,10 @@ class CanolaFieldState:
     waterlogged_days_consecutive: int = 0
     leaf_defoliation_pct: float = 0.0
     current_seed_moisture_pct: float = 100.0
+    # Insect scouting counts (perception layer)
+    lygus_per_10_sweeps: float = 0.0
+    cutworm_larvae_per_m2: float = 0.0
+    cabbage_seedpod_weevil_per_10_sweeps: float = 0.0
 
     # --- Accumulated stress trackers ---
     heat_stress_events_at_flowering: int = 0

@@ -112,6 +112,34 @@ def test_update_yield_uses_process_model():
     assert s.yield_breakdown["biophysical_kg_ha"] > 0
 
 
+def test_cutworm_alert_at_seedling():
+    e = CanolaAdvisoryEngine()
+    s = CanolaFieldState()
+    s.growth_stage = GrowthStage.GS1_LEAF_DEV
+    s.cutworm_larvae_per_m2 = 5          # within 4-6 economic threshold
+    cats = [a.category for a in e._check_pest_disease(s)]
+    assert "Cutworm" in cats
+
+
+def test_lygus_alert_at_early_pod():
+    e = CanolaAdvisoryEngine()
+    s = CanolaFieldState()
+    s.growth_stage = GrowthStage.GS7_POD_FILL
+    s.lygus_per_10_sweeps = 8            # above standard 5/10-sweep threshold
+    assert any(a.category == "LygusBug" for a in e._check_pest_disease(s))
+    # Below the high-value threshold, the message notes the higher context threshold.
+    lygus = next(a for a in e._check_pest_disease(s) if a.category == "LygusBug")
+    assert "50/10 sweeps" in lygus.message
+
+
+def test_cabbage_seedpod_weevil_alert_at_flowering():
+    e = CanolaAdvisoryEngine()
+    s = CanolaFieldState()
+    s.growth_stage = GrowthStage.GS5_FLOWERING
+    s.cabbage_seedpod_weevil_per_10_sweeps = 30
+    assert any(a.category == "CabbageSeedpodWeevil" for a in e._check_pest_disease(s))
+
+
 def test_canola_sulphur_starvation_caps_forecast():
     e = CanolaAdvisoryEngine()
     weather = synthetic_weather(year=2022, n_days=150, seed=1)

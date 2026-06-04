@@ -126,8 +126,11 @@ class AgronomyParameters:
     N_inhibits_P_uptake_above_kg_per_ha: float = 90.0
     N_in_seed_pct_min: float = 3.4
     N_in_seed_pct_max: float = 4.0
+    N_in_straw_pct_min: float = 0.5
+    N_in_straw_pct_max: float = 1.5
     N_uptake_peak_weeks_after_emergence_min: int = 9
     N_uptake_peak_weeks_after_emergence_max: int = 10
+    first_herbicide_window_leaf_stage_max: int = 4   # control weeds before crop 4-leaf
 
     # --- Pest / disease economic thresholds ---
     flea_beetle_action_threshold_pct: float = 25.0
@@ -135,6 +138,10 @@ class AgronomyParameters:
     cutworm_threshold_min_per_m2: float = 4.0
     cutworm_threshold_max_per_m2: float = 6.0
     lygus_standard_threshold_per_10_sweeps: int = 5
+    lygus_high_value_threshold_per_10_sweeps: int = 50   # high crop value / high-yield, well-watered
+    cabbage_seedpod_weevil_threshold_per_10_sweeps: float = 25.0   # ~10-20% flower (standard)
+    cabbage_seedpod_weevil_spray_field_pct_max: float = 10.0       # border / trap-strip spray area
+    bertha_armyworm_defoliation_pct: float = 20.0
     sclerotinia_max_yield_loss_pct: float = 33.0
     sclerotinia_fungicide_trigger_pct_flower: float = 10.0
 
