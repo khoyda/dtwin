@@ -57,12 +57,19 @@ class Scenario:
     soil_k2o: float = 300.0
     soil_s: float | None = None
 
+    # Friendly aliases accepted in scenario files.
+    _ALIASES = {"preceding": "preceding_crop", "plants": "plants_per_m2",
+                "station": "station_id", "analog": "analog_year"}
+
     @classmethod
     def from_dict(cls, d: dict) -> "Scenario":
+        d = {cls._ALIASES.get(k, k): v for k, v in d.items()}
         if d.get("seeding_date"):
-            d = dict(d)
             d["seeding_date"] = date.fromisoformat(str(d["seeding_date"]))
-        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+        unknown = set(d) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(f"unknown scenario keys: {sorted(unknown)}")
+        return cls(**d)
 
 
 # --- weather assembly --------------------------------------------------------

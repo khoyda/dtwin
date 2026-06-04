@@ -335,6 +335,41 @@ gives the same pooled result (≈0.37), so the limiter is representativeness, no
 next lever is **gridded weather per RM** (NASA POWER / ERA5) instead of a single station, and
 extending to **Manitoba MASC** RM yields.
 
+## Scenario forecasting (what-if CLI)
+
+[`scenario.py`](src/canola_dt/scenario.py) + `scripts/forecast.py` are a what-if layer over the
+twin for **canola and wheat**. A scenario bundles a crop, a weather basis and a management plan;
+the forecast comes from the calibrated process model → nutrient-limited ceiling → management
+modifiers, plus protein (wheat), phenology, a fertility recommendation and planning alerts.
+
+Weather basis for forecasting *this* season: `inseason` (real current-year ECCC weather to date
+**+ an analog year** for the remainder), `analog` (a whole historical season), or `synthetic`.
+
+```powershell
+# single scenario
+python scripts/forecast.py --crop wheat --n 110 --preceding canola --weather inseason
+python scripts/forecast.py --crop canola --n 150 --s 8 --weather analog --analog-year 2021
+
+# batch comparison from a file
+python scripts/forecast.py --scenarios config/scenarios.example.yaml
+```
+
+Example batch output (in-season 2026 + 2022 analog, SK):
+
+```
+name               crop     yield  bu/ac  prot limited_by     matur  limN
+wheat-N70          wheat     3.55   52.8  10.9 N                109     N
+wheat-N110         wheat     4.17   62.0  12.1 water/weather    109     N
+wheat-N140         wheat     4.17   62.0  13.0 water/weather    109  P2O5
+wheat-on-wheat     wheat     3.64   54.1  12.1 water/weather    109     N
+wheat-lowS         wheat     0.59    8.7  12.1 S                109     S
+canola-base        canola    2.45   43.7     - S                140     S
+```
+
+It reproduces the agronomy: extra N lifts **protein not yield** in a water-limited season
+(N110→N140: same 4.17 t/ha, protein 12.1→13.0%), wheat-on-wheat carries a rotation penalty
+(+ a CRITICAL rotation alert), and sulphur starvation caps both crops.
+
 ## Roadmap
 
 - [x] Scaffold + synthetic end-to-end pipeline
@@ -351,6 +386,7 @@ extending to **Manitoba MASC** RM yields.
 - [x] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein, protein estimate)
 - [x] Wheat fertility (N/P/K/S) + nutrient-limited yield forecast (Liebig) in the wheat advisory
 - [x] Wire the canola fertility model into the canola advisory yield (parity with wheat)
+- [x] Scenario forecasting CLI (canola/wheat what-ifs; in-season/analog/synthetic weather)
 - [ ] Gridded weather per RM (NASA POWER / ERA5); MB MASC
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields

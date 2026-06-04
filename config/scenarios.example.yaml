@@ -1,0 +1,30 @@
+# Example scenario set for: python scripts/forecast.py --scenarios config/scenarios.example.yaml
+#
+# `defaults` are merged into every scenario; each entry under `scenarios` overrides them.
+# weather: inseason (current-year actual to date + analog fill) | analog | synthetic
+# preceding (canola): wheat | peas | lentils | canola | fababean_green_manure | other_cereal
+# preceding (wheat):  canola | pulse | fallow | corn | cereal | wheat
+defaults:
+  province: Saskatchewan
+  weather: inseason
+  analog_year: 2022       # weather used for the remainder of the season
+  seeding_date: 2026-05-05
+
+scenarios:
+  # --- Wheat: nitrogen rate sweep (yield vs protein) ---
+  - {name: wheat-N70,  crop: wheat, n: 70,  preceding: canola}
+  - {name: wheat-N110, crop: wheat, n: 110, preceding: canola}
+  - {name: wheat-N140, crop: wheat, n: 140, preceding: canola}
+
+  # --- Wheat: rotation effect ---
+  - {name: wheat-on-wheat, crop: wheat, n: 110, preceding: wheat}
+
+  # --- Wheat: sulphur-starved (should cap yield) ---
+  - {name: wheat-lowS, crop: wheat, n: 110, s: 0, soil_s: 2, preceding: canola}
+
+  # --- Canola: nitrogen + sulphur ---
+  - {name: canola-base, crop: canola, n: 150, s: 15, preceding: peas}
+  - {name: canola-lowS, crop: canola, n: 150, s: 0, soil_s: 2, preceding: peas}
+
+  # --- Drought analog (2021) vs normal (2022), wheat ---
+  - {name: wheat-drought21, crop: wheat, n: 110, weather: analog, analog_year: 2021, preceding: canola}
