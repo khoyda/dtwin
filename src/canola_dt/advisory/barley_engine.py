@@ -24,11 +24,10 @@ from canola_dt.advisory.barley_agronomy import (
 )
 from canola_dt.advisory.barley_state import BarleyFieldState
 from canola_dt import fertility as fert
+from canola_dt.data.aafc import BARLEY_BU_AC_TO_KG_HA
 from canola_dt.simulation.barley_model import BarleyCropModel, BarleyParameters
 
 _S = AlertSeverity
-# Barley bushel = 48 lb = 21.772 kg -> 1 bu/ac = 53.8 kg/ha.
-BARLEY_BU_AC_TO_KG_HA = 21.772 / 0.404686
 
 
 def _applied_nutrients(state: BarleyFieldState) -> dict[str, float]:

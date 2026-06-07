@@ -327,6 +327,12 @@ python scripts/forecast.py --crop barley --variety malt_2row --n 140   # what-if
 The **malt N-dilemma** falls out cleanly: in a water-limited season, going N90 → N140 leaves yield
 unchanged but pushes protein 12.2% → 13.7%, tripping **malt grade FAIL → downgraded to feed**.
 
+**Sub-provincial validation** ([`barley_subprovincial.py`](src/canola_dt/barley_subprovincial.py),
+`scripts/validate_barley_subprovincial.py`) against the SK RM "Barley" column behaves like wheat:
+local RM correlation **0.32** vs provincial **0.36** — cereals already have strong provincial-scale
+skill, so single-RM matching doesn't add (canola was the exception, where it *did* help). The
+cross-crop story is consistent: **cereals → provincial ≥ local; canola → local > provincial.**
+
 ## Sub-provincial validation (Saskatchewan)
 
 [`subprovincial.py`](src/canola_dt/subprovincial.py) + `scripts/validate_subprovincial.py`
@@ -406,7 +412,7 @@ It reproduces the agronomy: extra N lifts **protein not yield** in a water-limit
 - [x] Couple process-model outputs (yield, biomass, LAI, water stress, timing) into ML features
 - [x] Advisory layer: Canola Council agronomic alerts + calibrated process-model yield
 - [x] Second crop: spring-wheat process model + calibration (anomaly corr 0.53 > canola 0.39)
-- [x] Third crop: spring-barley full twin (process + calibration + advisory w/ malt-protein + scenario)
+- [x] Third crop: spring-barley full twin (process + calibration + advisory + scenario + sub-provincial)
 - [x] Wheat sub-provincial validation vs SK RM spring-wheat (local 0.34 < provincial 0.41)
 - [x] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein, protein estimate)
 - [x] Wheat fertility (N/P/K/S) + nutrient-limited yield forecast (Liebig) in the wheat advisory
