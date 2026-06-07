@@ -28,3 +28,8 @@ scenarios:
 
   # --- Drought analog (2021) vs normal (2022), wheat ---
   - {name: wheat-drought21, crop: wheat, n: 110, weather: analog, analog_year: 2021, preceding: canola}
+
+  # --- Barley: malt protein dilemma (variety = malt_2row | malt_6row | feed) ---
+  - {name: barley-malt-N90,  crop: barley, variety: malt_2row, n: 90,  preceding: canola}
+  - {name: barley-malt-N140, crop: barley, variety: malt_2row, n: 140, preceding: canola}  # protein risk
+  - {name: barley-feed-N140, crop: barley, variety: feed,      n: 140, preceding: canola}

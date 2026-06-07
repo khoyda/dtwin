@@ -25,6 +25,9 @@ from canola_dt.advisory.agronomy import CultivarType, PrecedingCrop, Species
 from canola_dt.advisory.wheat_agronomy import WheatClass, WheatPrecedingCrop
 from canola_dt.advisory.wheat_engine import WheatAdvisoryEngine
 from canola_dt.advisory.wheat_state import WheatFieldState
+from canola_dt.advisory.barley_agronomy import BarleyPrecedingCrop, BarleyType
+from canola_dt.advisory.barley_engine import BarleyAdvisoryEngine
+from canola_dt.advisory.barley_state import BarleyFieldState
 from canola_dt.config import load_config
 from canola_dt.data import eccc
 from canola_dt.data.ingest import synthetic_weather
@@ -130,6 +133,13 @@ def _wheat_preceding(value: str) -> WheatPrecedingCrop:
         return WheatPrecedingCrop.CANOLA
 
 
+def _barley_preceding(value: str) -> BarleyPrecedingCrop:
+    try:
+        return BarleyPrecedingCrop(value)
+    except ValueError:
+        return BarleyPrecedingCrop.CANOLA
+
+
 # --- scenario execution ------------------------------------------------------
 
 def run_scenario(sc: Scenario, cfg=None, today: date | None = None) -> dict:
@@ -151,7 +161,7 @@ def run_scenario(sc: Scenario, cfg=None, today: date | None = None) -> dict:
             soil_available_k2o_kg_per_ha=sc.soil_k2o, soil_available_s_kg_per_ha=_d(sc.soil_s, 10.0),
         )
         state.plant_density_per_m2 = _d(sc.plants_per_m2, 65.0)
-    else:
+    elif sc.crop == "wheat":
         engine = WheatAdvisoryEngine.with_calibrated_model(cfg)
         state = WheatFieldState(
             field_id=sc.name, wheat_class=_enum_or(WheatClass, sc.variety, WheatClass.CWRS),
@@ -163,6 +173,20 @@ def run_scenario(sc: Scenario, cfg=None, today: date | None = None) -> dict:
             soil_available_k2o_kg_per_ha=sc.soil_k2o, soil_available_s_kg_per_ha=_d(sc.soil_s, 8.0),
         )
         state.plant_population_per_m2 = _d(sc.plants_per_m2, 275.0)
+    elif sc.crop == "barley":
+        engine = BarleyAdvisoryEngine.with_calibrated_model(cfg)
+        state = BarleyFieldState(
+            field_id=sc.name, barley_type=_enum_or(BarleyType, sc.variety, BarleyType.MALT_2ROW),
+            seeding_date=seeding, preceding_crop=_barley_preceding(sc.preceding_crop),
+            latitude=lat,
+            n_applied_kg_per_ha=_d(sc.n, 90.0), p2o5_applied_kg_per_ha=sc.p2o5,
+            s_applied_kg_per_ha=_d(sc.s, 12.0), k2o_applied_kg_per_ha=sc.k2o,
+            soil_available_n_kg_per_ha=sc.soil_n, soil_available_p2o5_kg_per_ha=sc.soil_p2o5,
+            soil_available_k2o_kg_per_ha=sc.soil_k2o, soil_available_s_kg_per_ha=_d(sc.soil_s, 8.0),
+        )
+        state.plant_population_per_m2 = _d(sc.plants_per_m2, 250.0)
+    else:
+        raise ValueError(f"unknown crop: {sc.crop!r} (expected canola | wheat | barley)")
 
     phen = engine.crop_model.run(weather, lat).summary
     engine.update_yield(state, weather, lat)
@@ -170,17 +194,18 @@ def run_scenario(sc: Scenario, cfg=None, today: date | None = None) -> dict:
     alerts, _ = engine.step(state)
     fert = engine.fertility_report(state, max(0.5, state.yield_potential_t_ha))
 
-    stage_key = "days_to_anthesis" if sc.crop == "wheat" else "days_to_flowering"
+    stage_key = "days_to_flowering" if sc.crop == "canola" else "days_to_anthesis"
     return {
         "name": sc.name, "crop": sc.crop, "weather": wlabel,
         "yield_t_ha": state.yield_potential_t_ha, "yield_bu_ac": state.yield_potential_bu_ac,
-        "protein_pct": state.estimated_protein_pct if sc.crop == "wheat" else None,
+        "protein_pct": getattr(state, "estimated_protein_pct", None) if sc.crop in ("wheat", "barley") else None,
         "limiting_factor": state.yield_breakdown.get("limiting_factor"),
         "biophysical_t_ha": round(state.yield_breakdown["biophysical_kg_ha"] / 1000, 2),
         "days_to_flower": phen.get(stage_key), "days_to_maturity": phen.get("days_to_maturity"),
         "reached_maturity": phen.get("reached_maturity"),
         "limiting_nutrient": fert["limiting_nutrient"],
         "fertilizer_kg_ha": fert["recommendation_kg_ha"],
+        "malt_grade_ok": getattr(state, "malt_grade_ok", None) if sc.crop == "barley" else None,
         "alerts": [str(a) for a in alerts if a.severity.value in ("CRITICAL", "WARNING")],
     }
 

@@ -54,6 +54,9 @@ def _print_one(r: dict) -> None:
     print(f"    biophysical : {r['biophysical_t_ha']} t/ha (water/weather potential)")
     if r["protein_pct"] is not None:
         print(f"  protein       : {r['protein_pct']} %")
+    if r.get("malt_grade_ok") is not None:
+        verdict = "OK (within 11.0-12.5%)" if r["malt_grade_ok"] else "FAIL -> downgraded to feed"
+        print(f"  malt grade    : {verdict}")
     flower = "heading/anthesis" if r["crop"] == "wheat" else "flowering"
     print(f"  phenology     : {flower} day {r['days_to_flower']}, maturity day {r['days_to_maturity']} "
           f"(reached: {r['reached_maturity']})")
@@ -81,7 +84,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Canola/wheat scenario forecasting")
     ap.add_argument("--scenarios", help="YAML file of scenarios for batch comparison")
     ap.add_argument("--json", action="store_true", help="emit raw JSON")
-    ap.add_argument("--crop", choices=["canola", "wheat"], default="wheat")
+    ap.add_argument("--crop", choices=["canola", "wheat", "barley"], default="wheat")
     ap.add_argument("--name", default="")
     ap.add_argument("--province", default="Saskatchewan")
     ap.add_argument("--station", type=int, default=None)

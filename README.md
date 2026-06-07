@@ -303,6 +303,30 @@ still hits protein), matching the agronomic rule that *wheat does not respond to
 but sulphur starvation, to which wheat is sensitive, caps the forecast and is reported as the
 limiting factor.
 
+## Spring barley (third crop)
+
+A third full crop, reusing the same infrastructure:
+
+- **[`simulation/barley_model.py`](src/canola_dt/simulation/barley_model.py)** — `BarleyCropModel`:
+  cardinal temps 0/20/32 °C, a **shorter season** than wheat, harvest index ~0.48.
+- **[`barley_calibration.py`](src/canola_dt/barley_calibration.py)** — calibration vs StatCan "Barley".
+  Barley has the **best weather skill of the three crops** (anomaly correlation ≈ 0.52–0.61).
+- **[`advisory/barley_engine.py`](src/canola_dt/advisory/barley_engine.py)** — `BarleyAdvisoryEngine`
+  with the barley-distinctive **malt vs feed** logic: for malt barley, protein must stay within
+  **11.0–12.5%**, and since high N raises *both* yield and protein, the engine estimates protein
+  and flags **malt-grade risk** (protein out of band, or any FHB/DON). Also net blotch (flag leaf),
+  scald (jointing), FHB (anthesis), lodging/PGR (Moddus at GS30–33), cutworm/aphid, rotation
+  (barley-on-barley penalised), and malt-aware harvest (don't combine below 13.5%).
+
+```powershell
+python scripts/run_barley_model.py 2020      # calibrated barley yield on real ECCC weather
+python scripts/run_barley_advisory.py        # Zadoks alerts + yield, protein, malt grade
+python scripts/forecast.py --crop barley --variety malt_2row --n 140   # what-if
+```
+
+The **malt N-dilemma** falls out cleanly: in a water-limited season, going N90 → N140 leaves yield
+unchanged but pushes protein 12.2% → 13.7%, tripping **malt grade FAIL → downgraded to feed**.
+
 ## Sub-provincial validation (Saskatchewan)
 
 [`subprovincial.py`](src/canola_dt/subprovincial.py) + `scripts/validate_subprovincial.py`
@@ -338,7 +362,7 @@ extending to **Manitoba MASC** RM yields.
 ## Scenario forecasting (what-if CLI)
 
 [`scenario.py`](src/canola_dt/scenario.py) + `scripts/forecast.py` are a what-if layer over the
-twin for **canola and wheat**. A scenario bundles a crop, a weather basis and a management plan;
+twin for **canola, wheat and barley**. A scenario bundles a crop, a weather basis and a management plan;
 the forecast comes from the calibrated process model → nutrient-limited ceiling → management
 modifiers, plus protein (wheat), phenology, a fertility recommendation and planning alerts.
 
@@ -382,6 +406,7 @@ It reproduces the agronomy: extra N lifts **protein not yield** in a water-limit
 - [x] Couple process-model outputs (yield, biomass, LAI, water stress, timing) into ML features
 - [x] Advisory layer: Canola Council agronomic alerts + calibrated process-model yield
 - [x] Second crop: spring-wheat process model + calibration (anomaly corr 0.53 > canola 0.39)
+- [x] Third crop: spring-barley full twin (process + calibration + advisory w/ malt-protein + scenario)
 - [x] Wheat sub-provincial validation vs SK RM spring-wheat (local 0.34 < provincial 0.41)
 - [x] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein, protein estimate)
 - [x] Wheat fertility (N/P/K/S) + nutrient-limited yield forecast (Liebig) in the wheat advisory

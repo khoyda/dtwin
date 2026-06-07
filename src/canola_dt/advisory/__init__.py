@@ -31,6 +31,14 @@ from canola_dt.advisory.wheat_engine import (
     wheat_seeding_rate,
 )
 from canola_dt.advisory.wheat_state import WheatFieldState
+from canola_dt.advisory.barley_agronomy import (
+    BarleyAgronomyParameters,
+    BarleyGrowthStage,
+    BarleyPrecedingCrop,
+    BarleyType,
+)
+from canola_dt.advisory.barley_engine import BarleyAdvisoryEngine, barley_seeding_rate
+from canola_dt.advisory.barley_state import BarleyFieldState
 
 __all__ = [
     # canola
@@ -41,4 +49,7 @@ __all__ = [
     # wheat
     "WheatAgronomyParameters", "WheatClass", "WheatGrowthStage", "WheatPrecedingCrop",
     "WheatFieldState", "WheatAdvisoryEngine", "wheat_seeding_rate", "wheat_n_requirement",
+    # barley
+    "BarleyAgronomyParameters", "BarleyType", "BarleyGrowthStage", "BarleyPrecedingCrop",
+    "BarleyFieldState", "BarleyAdvisoryEngine", "barley_seeding_rate",
 ]
