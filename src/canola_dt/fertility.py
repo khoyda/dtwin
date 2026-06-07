@@ -75,6 +75,19 @@ def wheat_nutrient_parameters() -> "NutrientParameters":
                               strategy=dict(DEFAULT_STRATEGY))
 
 
+# Spring-barley coefficients (kg per tonne of grain). Barley grain is lower-protein than
+# wheat (malt 11-12.5%), so N removal is a bit lower; straw holds most of the K.
+BARLEY_UPTAKE = {"N": 26.0, "P2O5": 11.0, "K2O": 22.0, "S": 4.0}
+BARLEY_REMOVAL = {"N": 19.0, "P2O5": 8.0, "K2O": 6.0, "S": 2.0}
+
+
+def barley_nutrient_parameters() -> "NutrientParameters":
+    """Spring-barley macronutrient parameters."""
+    return NutrientParameters(uptake_kg_per_t=dict(BARLEY_UPTAKE),
+                              removal_kg_per_t=dict(BARLEY_REMOVAL),
+                              strategy=dict(DEFAULT_STRATEGY))
+
+
 def ppm_to_kg_ha(ppm: float, depth_cm: float = 15.0, bulk_density_kg_m3: float = 1300.0) -> float:
     """Convert a soil-test concentration (ppm = mg/kg) to available kg/ha for a layer.
 

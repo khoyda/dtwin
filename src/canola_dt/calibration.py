@@ -113,9 +113,12 @@ def load_season_frames(cfg: Config) -> dict[tuple[str, int, int], tuple[pd.DataF
     """
     ds = cfg["data_sources"]
     cache = cfg.path("data_raw") / "eccc"
+    exclude = set(ds.get("exclude_years", []) or [])
     frames: dict[tuple[str, int, int], tuple[pd.DataFrame, float]] = {}
     for sid, info in eccc.station_map(cfg).items():
         for year in range(ds["start_year"], ds["end_year"] + 1):
+            if year in exclude:
+                continue
             frame = _prepare_season(eccc.fetch_daily(int(sid), year, cache), year)
             if len(frame) < MIN_SEASON_DAYS or frame["tmean_c"].notna().mean() < MIN_COMPLETENESS:
                 continue
@@ -152,6 +155,7 @@ def load_targets(cfg: Config) -> pd.DataFrame:
         yield_disposition=ds["statcan"]["yield_disposition"],
     )
     obs = obs[(obs["year"] >= ds["start_year"]) & (obs["year"] <= ds["end_year"])]
+    obs = obs[~obs["year"].isin(ds.get("exclude_years", []) or [])]
     return technology_detrend(obs, ref_year=ds["end_year"])
 
 
