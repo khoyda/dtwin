@@ -405,6 +405,9 @@ It reproduces the agronomy: extra N lifts **protein not yield** in a water-limit
 A simple one-page Flask UI over the scenario engine ([`webapp.py`](src/canola_dt/webapp.py)):
 pick a crop, weather basis and management plan; get yield, protein, the limiting factor, a
 fertility recommendation and planning alerts — including the barley malt-grade verdict.
+Enter a comma-separated list of **N rates to compare** and it sweeps them, drawing a
+**yield-and-protein-vs-N chart** (server-side matplotlib) plus a comparison table — which makes
+the malt-protein tradeoff visible (yield plateaus while protein climbs past the 12.5% line).
 
 ```powershell
 pip install -e ".[ui]"          # installs Flask (pure Python)

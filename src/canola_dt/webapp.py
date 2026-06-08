@@ -7,10 +7,17 @@ get yield, protein, limiting factor, a fertility recommendation and planning ale
 
 from __future__ import annotations
 
-from flask import Flask, render_template_string, request
+import base64
+import io
 
-from canola_dt.config import load_config
-from canola_dt.scenario import Scenario, run_scenario
+import matplotlib
+matplotlib.use("Agg")  # headless server-side rendering
+import matplotlib.pyplot as plt  # noqa: E402
+
+from flask import Flask, render_template_string, request  # noqa: E402
+
+from canola_dt.config import load_config  # noqa: E402
+from canola_dt.scenario import Scenario, run_scenario  # noqa: E402
 
 app = Flask(__name__)
 _CFG = None
@@ -26,6 +33,30 @@ def _cfg():
 def _num(value):
     value = (value or "").strip()
     return float(value) if value else None
+
+
+def _yield_n_chart(sweep: list[dict], crop: str) -> str:
+    """Render yield (and protein) vs N as a base64 PNG for inline embedding."""
+    ns = [r["n_applied"] for r in sweep]
+    ys = [r["yield_t_ha"] for r in sweep]
+    ps = [r["protein_pct"] for r in sweep]
+    fig, ax = plt.subplots(figsize=(5.2, 3.3))
+    ax.plot(ns, ys, marker="o", color="#2e7d32", label="yield")
+    ax.set_xlabel("N applied (kg/ha)")
+    ax.set_ylabel("yield (t/ha)", color="#2e7d32")
+    ax.grid(alpha=0.25)
+    if any(p is not None for p in ps):
+        ax2 = ax.twinx()
+        ax2.plot(ns, ps, marker="s", color="#b06a00", label="protein")
+        ax2.set_ylabel("protein (%)", color="#b06a00")
+        if crop == "barley":  # malt acceptance ceiling
+            ax2.axhline(12.5, ls="--", lw=1, color="#b06a00", alpha=0.6)
+            ax2.text(ns[0], 12.6, "malt max 12.5%", color="#b06a00", fontsize=8)
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=110)
+    plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode()
 
 
 TEMPLATE = """<!doctype html>
@@ -82,13 +113,30 @@ TEMPLATE = """<!doctype html>
     <input name="preceding" value="{{form.get('preceding','')}}" placeholder="default">
     <label>Variety / class <span class="sub">(canola: hybrid · wheat: CWRS · barley: malt_2row/feed)</span></label>
     <input name="variety" value="{{form.get('variety','')}}" placeholder="default">
+    <label>Compare N rates <span class="sub">(comma-separated → chart, e.g. 60,90,120,150)</span></label>
+    <input name="n_sweep" value="{{form.get('n_sweep','')}}" placeholder="leave blank for single forecast">
     <button type="submit">Forecast →</button>
     <p class="muted">inseason = current-year weather to date + analog fill. First run may take a few seconds (fetches ECCC).</p>
   </form>
 
   <div>
   {% if error %}<div class="card err">{{error}}</div>{% endif %}
-  {% if result %}
+  {% if chart %}
+    <div class="card">
+      <div class="sub">{{sweep_label}}</div>
+      <img src="data:image/png;base64,{{chart}}" alt="yield vs N" style="width:100%;margin-top:8px">
+      <table>
+        <tr><td><b>N kg/ha</b></td><td><b>yield t/ha</b></td><td><b>bu/ac</b></td>
+            <td><b>protein</b></td><td><b>limited by</b></td>{% if sweep[0].malt_grade_ok is not none %}<td><b>malt</b></td>{% endif %}</tr>
+        {% for r in sweep %}<tr>
+          <td>{{r.n_applied}}</td><td>{{r.yield_t_ha}}</td><td>{{r.yield_bu_ac}}</td>
+          <td>{{r.protein_pct if r.protein_pct is not none else '—'}}</td>
+          <td>{{r.limiting_factor}}</td>
+          {% if r.malt_grade_ok is not none %}<td><span class="pill {{'ok' if r.malt_grade_ok else 'bad'}}">{{'OK' if r.malt_grade_ok else 'FAIL'}}</span></td>{% endif %}
+        </tr>{% endfor %}
+      </table>
+    </div>
+  {% elif result %}
     <div class="card">
       <div class="sub">{{result.name}} · {{result.crop}} · {{result.weather}}</div>
       <div class="big">{{result.yield_t_ha}} t/ha <span class="sub">({{result.yield_bu_ac}} bu/ac)</span></div>
@@ -115,27 +163,44 @@ TEMPLATE = """<!doctype html>
 </main></body></html>"""
 
 
+def _scenario(form, n_override=None) -> Scenario:
+    crop = form.get("crop", "wheat")
+    return Scenario(
+        crop=crop, name=(form.get("name") or f"{crop} forecast"),
+        province=form.get("province", "Saskatchewan"),
+        weather=form.get("weather", "inseason"),
+        analog_year=int(form.get("analog_year") or 2022),
+        preceding_crop=form.get("preceding", "") or "",
+        variety=form.get("variety", "") or "",
+        plants_per_m2=_num(form.get("plants")),
+        n=(n_override if n_override is not None else _num(form.get("n"))),
+        s=_num(form.get("s")),
+    )
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
-    result = error = None
+    result = error = chart = sweep_label = None
+    sweep: list[dict] = []
     form = request.form if request.method == "POST" else {}
     if request.method == "POST":
+        crop = form.get("crop", "wheat")
+        n_sweep = (form.get("n_sweep") or "").strip()
         try:
-            sc = Scenario(
-                crop=form.get("crop", "wheat"),
-                name=(form.get("name") or f"{form.get('crop', 'wheat')} forecast"),
-                province=form.get("province", "Saskatchewan"),
-                weather=form.get("weather", "inseason"),
-                analog_year=int(form.get("analog_year") or 2022),
-                preceding_crop=form.get("preceding", "") or "",
-                variety=form.get("variety", "") or "",
-                plants_per_m2=_num(form.get("plants")),
-                n=_num(form.get("n")), s=_num(form.get("s")),
-            )
-            result = run_scenario(sc, _cfg())
+            if n_sweep:  # compare mode: vary N, chart yield + protein
+                n_values = sorted({float(x) for x in n_sweep.replace(" ", "").split(",") if x})
+                for nv in n_values:
+                    r = run_scenario(_scenario(form, nv), _cfg())
+                    r["n_applied"] = nv
+                    sweep.append(r)
+                chart = _yield_n_chart(sweep, crop)
+                sweep_label = f"{crop} · N sweep · {sweep[0]['weather']}"
+            else:
+                result = run_scenario(_scenario(form), _cfg())
         except Exception as e:  # surface any failure to the page rather than 500
             error = f"{type(e).__name__}: {e}"
-    return render_template_string(TEMPLATE, result=result, error=error, form=form)
+    return render_template_string(TEMPLATE, result=result, sweep=sweep, chart=chart,
+                                  sweep_label=sweep_label, error=error, form=form)
 
 
 def main(host: str = "127.0.0.1", port: int = 5000) -> None:

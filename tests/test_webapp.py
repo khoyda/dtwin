@@ -31,3 +31,11 @@ def test_barley_malt_grade_shown(client):
                                "variety": "malt_2row", "n": "160"})
     assert r.status_code == 200
     assert b"malt" in r.data.lower()
+
+
+def test_n_sweep_renders_chart(client):
+    r = client.post("/", data={"crop": "barley", "weather": "synthetic",
+                               "variety": "malt_2row", "n_sweep": "60, 100, 140"})
+    assert r.status_code == 200
+    assert b"data:image/png;base64," in r.data   # embedded matplotlib chart
+    assert b"N sweep" in r.data
