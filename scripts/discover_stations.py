@@ -54,7 +54,8 @@ def _farthest_point_select(candidates: list[dict], n: int) -> list[dict]:
     return chosen
 
 
-def discover(cfg, provinces, per_province: int) -> dict[int, dict]:
+def discover(cfg, provinces, per_province: int,
+             pool: int = POOL_PER_PROVINCE, min_mean: float = MIN_MEAN_COMPLETENESS) -> dict[int, dict]:
     ds = cfg["data_sources"]
     cache = cfg.path("data_raw") / "eccc"
     inv = eccc.load_station_inventory(cache)
@@ -71,12 +72,12 @@ def discover(cfg, provinces, per_province: int) -> dict[int, dict]:
             & (~inv["Name"].str.contains("|".join(NAME_DENYLIST), case=False, na=False))
         ].copy()
         cand["span"] = cand["DLY Last Year"].astype(int) - cand["DLY First Year"].astype(int)
-        cand = cand.sort_values("span", ascending=False).head(POOL_PER_PROVINCE)
+        cand = cand.sort_values("span", ascending=False).head(pool)
 
         screened = []
         for _, r in cand.iterrows():
             mn, mean = eccc.season_completeness_for(r["Station ID"], SCREEN_YEARS, cache)
-            if mean >= MIN_MEAN_COMPLETENESS and mn >= MIN_MIN_COMPLETENESS:
+            if mean >= min_mean and mn >= MIN_MIN_COMPLETENESS:
                 screened.append({
                     "id": int(r["Station ID"]),
                     "province": prov,
@@ -97,13 +98,17 @@ def discover(cfg, provinces, per_province: int) -> dict[int, dict]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--per-province", type=int, default=10)
+    ap.add_argument("--pool", type=int, default=POOL_PER_PROVINCE,
+                    help="candidates screened per province (by daily-record span)")
+    ap.add_argument("--min-mean", type=float, default=MIN_MEAN_COMPLETENESS,
+                    help="minimum mean growing-season completeness to keep a station")
     args = ap.parse_args()
 
     cfg = load_config()
     provinces = cfg["data_sources"]["statcan"]["provinces"]
     print(f"== Discovering up to {args.per_province} stations/province "
-          f"(screening years {SCREEN_YEARS}) ==")
-    stations = discover(cfg, provinces, args.per_province)
+          f"(pool {args.pool}, min mean completeness {args.min_mean}, screening years {SCREEN_YEARS}) ==")
+    stations = discover(cfg, provinces, args.per_province, pool=args.pool, min_mean=args.min_mean)
 
     out = cfg.root / "config" / eccc.GENERATED_STATIONS
     # Plain dict dump keyed by station id; pipelines load via eccc.station_map().

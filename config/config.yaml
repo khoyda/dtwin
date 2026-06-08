@@ -90,8 +90,8 @@ process_model:
   # Defaults are conventional Prairie values; `scripts/calibrate_process_model.py`
   # tunes a subset against trend-adjusted StatCan yields and writes the result to
   # artifacts/calibrated_params.json (which overrides these at load time).
-  # Calibrated 2026-06-07 vs StatCan canola yields with 2021 (drought) EXCLUDED.
-  rue: 1.65                  # radiation-use efficiency, g biomass / MJ PAR (yield level)
+  # Calibrated 2026-06-07 vs StatCan canola yields, 52 ECCC stations, 2021 (drought) EXCLUDED.
+  rue: 1.75                  # radiation-use efficiency, g biomass / MJ PAR (yield level)
   kl: 0.14                   # root water-uptake coefficient (drought sensitivity)
   hi_heat_sensitivity: 0.06  # harvest-index loss per flowering heat-stress day
   harvest_index: 0.28        # potential harvest index
@@ -100,8 +100,8 @@ wheat_model:
   # Calibratable parameters for the spring-wheat process model (simulation/wheat_model.py).
   # Defaults are conventional Prairie spring-wheat values; calibrate_wheat_model.py tunes a
   # subset vs trend-adjusted StatCan spring-wheat yields -> artifacts/wheat_calibrated_params.json.
-  # Calibrated 2026-06-07 vs StatCan spring-wheat yields with 2021 (drought) EXCLUDED.
-  rue: 2.26                  # radiation-use efficiency, g biomass / MJ PAR
+  # Calibrated 2026-06-07 vs StatCan spring-wheat yields, 52 ECCC stations, 2021 EXCLUDED.
+  rue: 2.38                  # radiation-use efficiency, g biomass / MJ PAR
   kl: 0.14                   # root water-uptake coefficient (drought sensitivity)
   hi_heat_sensitivity: 0.09  # harvest-index loss per grain-fill heat-stress day
   harvest_index: 0.42        # potential harvest index (wheat > canola)
@@ -110,8 +110,8 @@ barley_model:
   # Calibratable parameters for the spring-barley process model (simulation/barley_model.py).
   # Barley: short-season, cold-tolerant, high harvest index. calibrate_barley_model.py tunes a
   # subset vs trend-adjusted StatCan barley yields -> artifacts/barley_calibrated_params.json.
-  # Calibrated 2026-06-07 vs StatCan barley yields with 2021 (drought) EXCLUDED.
-  rue: 2.05                  # radiation-use efficiency, g biomass / MJ PAR
+  # Calibrated 2026-06-07 vs StatCan barley yields, 52 ECCC stations, 2021 EXCLUDED.
+  rue: 2.13                  # radiation-use efficiency, g biomass / MJ PAR
   kl: 0.14                   # root water-uptake coefficient (drought sensitivity)
   hi_heat_sensitivity: 0.09  # harvest-index loss per grain-fill heat-stress day
   harvest_index: 0.48        # potential harvest index (barley > wheat)
