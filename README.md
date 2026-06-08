@@ -400,6 +400,19 @@ It reproduces the agronomy: extra N lifts **protein not yield** in a water-limit
 (N110→N140: same 4.17 t/ha, protein 12.1→13.0%), wheat-on-wheat carries a rotation penalty
 (+ a CRITICAL rotation alert), and sulphur starvation caps both crops.
 
+## Web UI
+
+A simple one-page Flask UI over the scenario engine ([`webapp.py`](src/canola_dt/webapp.py)):
+pick a crop, weather basis and management plan; get yield, protein, the limiting factor, a
+fertility recommendation and planning alerts — including the barley malt-grade verdict.
+
+```powershell
+pip install -e ".[ui]"          # installs Flask (pure Python)
+python scripts/forecast_ui.py   # serves http://127.0.0.1:5000
+```
+
+No native dependencies, so it runs anywhere the rest of the project does (incl. Windows-on-ARM).
+
 ## Roadmap
 
 - [x] Scaffold + synthetic end-to-end pipeline
@@ -418,6 +431,7 @@ It reproduces the agronomy: extra N lifts **protein not yield** in a water-limit
 - [x] Wheat fertility (N/P/K/S) + nutrient-limited yield forecast (Liebig) in the wheat advisory
 - [x] Wire the canola fertility model into the canola advisory yield (parity with wheat)
 - [x] Scenario forecasting CLI (canola/wheat what-ifs; in-season/analog/synthetic weather)
+- [x] Simple web UI (Flask) over the scenario engine
 - [ ] Gridded weather per RM (NASA POWER / ERA5); MB MASC
 - [ ] Gridded weather per RM (NASA POWER / ERA5) to fix station-vs-RM representativeness
 - [ ] Extend sub-provincial validation to Manitoba MASC RM yields
