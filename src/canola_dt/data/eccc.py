@@ -103,8 +103,11 @@ def fetch_daily(station_id: int, year: int, cache_dir: str | Path) -> pd.DataFra
         raw = cache.read_bytes()
     else:
         raw = _http_get(BULK_URL.format(station_id=station_id, year=year))
-        cache.parent.mkdir(parents=True, exist_ok=True)
-        cache.write_bytes(raw)
+        try:  # caching is best-effort: read-only filesystems (e.g. serverless) still work
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_bytes(raw)
+        except OSError:
+            pass
 
     df = pd.read_csv(io.BytesIO(raw), encoding="utf-8-sig", low_memory=False)
     out = pd.DataFrame(

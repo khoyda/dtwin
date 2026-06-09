@@ -9,10 +9,18 @@ from __future__ import annotations
 
 import base64
 import io
+import os
 
-import matplotlib
-matplotlib.use("Agg")  # headless server-side rendering
-import matplotlib.pyplot as plt  # noqa: E402
+# Serverless hosts (e.g. Vercel) have a read-only HOME; point matplotlib's cache at /tmp.
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/mpl")
+
+try:  # matplotlib is only needed for the N-sweep chart; degrade gracefully without it
+    import matplotlib  # noqa: E402
+    matplotlib.use("Agg")  # headless server-side rendering
+    import matplotlib.pyplot as plt  # noqa: E402
+    _HAS_MPL = True
+except Exception:
+    _HAS_MPL = False
 
 from flask import Flask, render_template_string, request  # noqa: E402
 
@@ -35,8 +43,10 @@ def _num(value):
     return float(value) if value else None
 
 
-def _yield_n_chart(sweep: list[dict], crop: str) -> str:
+def _yield_n_chart(sweep: list[dict], crop: str) -> str | None:
     """Render yield (and protein) vs N as a base64 PNG for inline embedding."""
+    if not _HAS_MPL:
+        return None
     ns = [r["n_applied"] for r in sweep]
     ys = [r["yield_t_ha"] for r in sweep]
     ps = [r["protein_pct"] for r in sweep]
@@ -121,10 +131,10 @@ TEMPLATE = """<!doctype html>
 
   <div>
   {% if error %}<div class="card err">{{error}}</div>{% endif %}
-  {% if chart %}
+  {% if sweep %}
     <div class="card">
       <div class="sub">{{sweep_label}}</div>
-      <img src="data:image/png;base64,{{chart}}" alt="yield vs N" style="width:100%;margin-top:8px">
+      {% if chart %}<img src="data:image/png;base64,{{chart}}" alt="yield vs N" style="width:100%;margin-top:8px">{% endif %}
       <table>
         <tr><td><b>N kg/ha</b></td><td><b>yield t/ha</b></td><td><b>bu/ac</b></td>
             <td><b>protein</b></td><td><b>limited by</b></td>{% if sweep[0].malt_grade_ok is not none %}<td><b>malt</b></td>{% endif %}</tr>

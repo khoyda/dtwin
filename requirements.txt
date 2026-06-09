@@ -1,7 +1,9 @@
-# Core stack (see pyproject.toml for authoritative pins)
+# Runtime deps for the forecast app + web UI (used by the Vercel deploy).
+# This is intentionally the SLIM runtime subset -- the forecasting/advisory/UI path does
+# NOT use scikit-learn/joblib (those are only for the optional ML training in
+# canola_dt.training). For full local dev incl. the ML model: pip install -e ".[dev]"
 numpy>=1.26
 pandas>=2.1
-scikit-learn>=1.4
-joblib>=1.3
 pyyaml>=6.0
 matplotlib>=3.8
+flask>=3.0

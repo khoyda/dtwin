@@ -1,0 +1,9 @@
+# Keep the serverless function small: only api/, src/ and config/ are needed at runtime.
+tests/
+scripts/
+data/
+artifacts/
+notebooks/
+.venv/
+*.md
+*.ipynb
