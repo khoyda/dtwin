@@ -33,6 +33,8 @@ CANOLA_BU_AC_TO_KG_HA = 22.6796 / 0.404686
 WHEAT_BU_AC_TO_KG_HA = 27.2155 / 0.404686
 # Barley: 1 bushel = 48 lb = 21.7724 kg  ->  1 bu/ac = 53.80 kg/ha.
 BARLEY_BU_AC_TO_KG_HA = 21.7724 / 0.404686
+# Field pea: 1 bushel = 60 lb = 27.2155 kg  ->  1 bu/ac = 67.25 kg/ha (same as wheat).
+PEA_BU_AC_TO_KG_HA = 27.2155 / 0.404686
 
 
 def _to_kg_ha(value: float, unit: str) -> float:

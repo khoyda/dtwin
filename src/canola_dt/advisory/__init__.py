@@ -39,6 +39,14 @@ from canola_dt.advisory.barley_agronomy import (
 )
 from canola_dt.advisory.barley_engine import BarleyAdvisoryEngine, barley_seeding_rate
 from canola_dt.advisory.barley_state import BarleyFieldState
+from canola_dt.advisory.pea_agronomy import (
+    PeaAgronomyParameters,
+    PeaGrowthStage,
+    PeaPrecedingCrop,
+    PeaType,
+)
+from canola_dt.advisory.pea_engine import PeaAdvisoryEngine, pea_seeding_rate
+from canola_dt.advisory.pea_state import PeaFieldState
 
 __all__ = [
     # canola
@@ -52,4 +60,7 @@ __all__ = [
     # barley
     "BarleyAgronomyParameters", "BarleyType", "BarleyGrowthStage", "BarleyPrecedingCrop",
     "BarleyFieldState", "BarleyAdvisoryEngine", "barley_seeding_rate",
+    # pea
+    "PeaAgronomyParameters", "PeaType", "PeaGrowthStage", "PeaPrecedingCrop",
+    "PeaFieldState", "PeaAdvisoryEngine", "pea_seeding_rate",
 ]

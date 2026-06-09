@@ -84,7 +84,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Canola/wheat scenario forecasting")
     ap.add_argument("--scenarios", help="YAML file of scenarios for batch comparison")
     ap.add_argument("--json", action="store_true", help="emit raw JSON")
-    ap.add_argument("--crop", choices=["canola", "wheat", "barley"], default="wheat")
+    ap.add_argument("--crop", choices=["canola", "wheat", "barley", "pea"], default="wheat")
     ap.add_argument("--name", default="")
     ap.add_argument("--province", default="Saskatchewan")
     ap.add_argument("--station", type=int, default=None)

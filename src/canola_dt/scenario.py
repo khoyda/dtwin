@@ -28,6 +28,9 @@ from canola_dt.advisory.wheat_state import WheatFieldState
 from canola_dt.advisory.barley_agronomy import BarleyPrecedingCrop, BarleyType
 from canola_dt.advisory.barley_engine import BarleyAdvisoryEngine
 from canola_dt.advisory.barley_state import BarleyFieldState
+from canola_dt.advisory.pea_agronomy import PeaPrecedingCrop, PeaType
+from canola_dt.advisory.pea_engine import PeaAdvisoryEngine
+from canola_dt.advisory.pea_state import PeaFieldState
 from canola_dt.config import load_config
 from canola_dt.data import eccc
 from canola_dt.data.ingest import synthetic_weather
@@ -140,6 +143,13 @@ def _barley_preceding(value: str) -> BarleyPrecedingCrop:
         return BarleyPrecedingCrop.CANOLA
 
 
+def _pea_preceding(value: str) -> PeaPrecedingCrop:
+    try:
+        return PeaPrecedingCrop(value)
+    except ValueError:
+        return PeaPrecedingCrop.CEREAL
+
+
 # --- scenario execution ------------------------------------------------------
 
 def run_scenario(sc: Scenario, cfg=None, today: date | None = None) -> dict:
@@ -185,8 +195,20 @@ def run_scenario(sc: Scenario, cfg=None, today: date | None = None) -> dict:
             soil_available_k2o_kg_per_ha=sc.soil_k2o, soil_available_s_kg_per_ha=_d(sc.soil_s, 8.0),
         )
         state.plant_population_per_m2 = _d(sc.plants_per_m2, 250.0)
+    elif sc.crop == "pea":
+        engine = PeaAdvisoryEngine.with_calibrated_model(cfg)
+        state = PeaFieldState(
+            field_id=sc.name, pea_type=_enum_or(PeaType, sc.variety, PeaType.YELLOW),
+            seeding_date=seeding, preceding_crop=_pea_preceding(sc.preceding_crop),
+            latitude=lat,
+            n_applied_kg_per_ha=_d(sc.n, 12.0), p2o5_applied_kg_per_ha=sc.p2o5,
+            s_applied_kg_per_ha=_d(sc.s, 8.0), k2o_applied_kg_per_ha=sc.k2o,
+            soil_available_n_kg_per_ha=sc.soil_n, soil_available_p2o5_kg_per_ha=sc.soil_p2o5,
+            soil_available_k2o_kg_per_ha=sc.soil_k2o, soil_available_s_kg_per_ha=_d(sc.soil_s, 8.0),
+        )
+        state.plant_population_per_m2 = _d(sc.plants_per_m2, 80.0)
     else:
-        raise ValueError(f"unknown crop: {sc.crop!r} (expected canola | wheat | barley)")
+        raise ValueError(f"unknown crop: {sc.crop!r} (expected canola | wheat | barley | pea)")
 
     phen = engine.crop_model.run(weather, lat).summary
     engine.update_yield(state, weather, lat)
@@ -194,11 +216,12 @@ def run_scenario(sc: Scenario, cfg=None, today: date | None = None) -> dict:
     alerts, _ = engine.step(state)
     fert = engine.fertility_report(state, max(0.5, state.yield_potential_t_ha))
 
-    stage_key = "days_to_flowering" if sc.crop == "canola" else "days_to_anthesis"
+    stage_key = "days_to_anthesis" if sc.crop in ("wheat", "barley") else "days_to_flowering"
     return {
         "name": sc.name, "crop": sc.crop, "weather": wlabel,
         "yield_t_ha": state.yield_potential_t_ha, "yield_bu_ac": state.yield_potential_bu_ac,
-        "protein_pct": getattr(state, "estimated_protein_pct", None) if sc.crop in ("wheat", "barley") else None,
+        "protein_pct": (getattr(state, "estimated_protein_pct", None)
+                        if sc.crop in ("wheat", "barley", "pea") else None),
         "limiting_factor": state.yield_breakdown.get("limiting_factor"),
         "biophysical_t_ha": round(state.yield_breakdown["biophysical_kg_ha"] / 1000, 2),
         "days_to_flower": phen.get(stage_key), "days_to_maturity": phen.get("days_to_maturity"),

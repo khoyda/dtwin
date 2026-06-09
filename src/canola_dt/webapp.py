@@ -89,7 +89,7 @@ TEMPLATE = """<!doctype html>
 <main>
   <form class="card" method="post">
     <label>Crop</label>
-    <select name="crop">{% for c in ['canola','wheat','barley'] %}
+    <select name="crop">{% for c in ['canola','wheat','barley','pea'] %}
       <option value="{{c}}" {{'selected' if form.get('crop')==c else ''}}>{{c}}</option>{% endfor %}</select>
     <label>Province</label>
     <select name="province">{% for p in ['Saskatchewan','Alberta','Manitoba'] %}

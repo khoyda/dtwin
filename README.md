@@ -333,6 +333,32 @@ local RM correlation **0.32** vs provincial **0.36** — cereals already have st
 skill, so single-RM matching doesn't add (canola was the exception, where it *did* help). The
 cross-crop story is consistent: **cereals → provincial ≥ local; canola → local > provincial.**
 
+## Yellow pea (fourth crop — legume)
+
+A fourth full crop, and the first **legume** — which inverts the nitrogen story:
+
+- **[`simulation/pea_model.py`](src/canola_dt/simulation/pea_model.py)** — `PeaCropModel`:
+  cool-season (base 5 °C), a **low 25 °C flowering heat-abort** threshold (peas drop flowers in
+  heat), ~85–100 day season. Calibrated anomaly correlation ≈ **0.40** with a **1.0× volatility
+  ratio** — peas are the most weather-deterministic of the four crops at provincial scale.
+- **[`advisory/pea_engine.py`](src/canola_dt/advisory/pea_engine.py)** — `PeaAdvisoryEngine` with
+  the legume-distinctive logic: **peas fix their own N**, so the engine flags **inoculation** and
+  warns when applied **N is high enough to *suppress* fixation** (>28 kg/ha) or *prevent* it
+  (>55 kg/ha) — the opposite of the cereal N logic. Plus the long pulse-free rotation that
+  **aphanomyces** root rot demands (no in-crop control, 10–15 yr soil persistence), **ascochyta**
+  fungicide timing, pea aphid / leaf weevil, lodging and harvest/desiccation.
+
+Yield = calibrated pea model × nutrient ceiling (N met by fixation, so **P** or water usually
+limits) × management modifiers (population, rotation — **no N modifier**). The fertility report
+recommends only **starter N** and reports the N fixed (~60 kg/ha) and the N **credit to the next
+crop**. Sub-provincial behaves like the cereals (local 0.28 < provincial 0.38).
+
+```powershell
+python scripts/run_pea_model.py 2020      # calibrated pea yield on real ECCC weather
+python scripts/run_pea_advisory.py        # legume alerts + yield, protein, fixation
+python scripts/forecast.py --crop pea --preceding pea --n 80   # what-if (fires both CRITICAL alerts)
+```
+
 ## Sub-provincial validation (Saskatchewan)
 
 [`subprovincial.py`](src/canola_dt/subprovincial.py) + `scripts/validate_subprovincial.py`
@@ -429,6 +455,7 @@ No native dependencies, so it runs anywhere the rest of the project does (incl. 
 - [x] Advisory layer: Canola Council agronomic alerts + calibrated process-model yield
 - [x] Second crop: spring-wheat process model + calibration (anomaly corr 0.53 > canola 0.39)
 - [x] Third crop: spring-barley full twin (process + calibration + advisory + scenario + sub-provincial)
+- [x] Fourth crop: yellow-pea full twin (legume — N fixation, aphanomyces rotation, heat-abort)
 - [x] Wheat sub-provincial validation vs SK RM spring-wheat (local 0.34 < provincial 0.41)
 - [x] Wheat advisory layer (Zadoks stages, FHB/midge timing, N-for-protein, protein estimate)
 - [x] Wheat fertility (N/P/K/S) + nutrient-limited yield forecast (Liebig) in the wheat advisory

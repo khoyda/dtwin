@@ -88,6 +88,20 @@ def barley_nutrient_parameters() -> "NutrientParameters":
                               strategy=dict(DEFAULT_STRATEGY))
 
 
+# Yellow-pea coefficients (kg per tonne of seed). NOTE: peas are a legume and FIX most of
+# their N (~40-80 kg/ha/season) via rhizobia — N is NOT fertilizer-supplied (starter only),
+# so the advisory adds a fixation credit to N supply rather than recommending N.
+PEA_UPTAKE = {"N": 37.0, "P2O5": 35.0, "K2O": 30.0, "S": 3.5}
+PEA_REMOVAL = {"N": 37.0, "P2O5": 29.0, "K2O": 12.0, "S": 1.5}
+
+
+def pea_nutrient_parameters() -> "NutrientParameters":
+    """Yellow-pea macronutrient parameters (N largely met by fixation; see pea advisory)."""
+    return NutrientParameters(uptake_kg_per_t=dict(PEA_UPTAKE),
+                              removal_kg_per_t=dict(PEA_REMOVAL),
+                              strategy=dict(DEFAULT_STRATEGY))
+
+
 def ppm_to_kg_ha(ppm: float, depth_cm: float = 15.0, bulk_density_kg_m3: float = 1300.0) -> float:
     """Convert a soil-test concentration (ppm = mg/kg) to available kg/ha for a layer.
 

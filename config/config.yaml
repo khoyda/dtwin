@@ -78,6 +78,7 @@ data_sources:
     crop: Canola (rapeseed)
     wheat_crop: Wheat, spring        # StatCan crop name for the wheat digital twin
     barley_crop: Barley              # StatCan crop name for the barley digital twin
+    pea_crop: Peas, dry              # StatCan crop name for the yellow-pea digital twin
     yield_disposition: Average yield (kilograms per hectare)
     provinces: [Saskatchewan, Alberta, Manitoba]
 
@@ -115,6 +116,16 @@ barley_model:
   kl: 0.14                   # root water-uptake coefficient (drought sensitivity)
   hi_heat_sensitivity: 0.09  # harvest-index loss per grain-fill heat-stress day
   harvest_index: 0.48        # potential harvest index (barley > wheat)
+
+pea_model:
+  # Calibratable parameters for the yellow-pea process model (simulation/pea_model.py).
+  # Cool-season legume: base temp 5, low 25 C flowering heat-abort threshold, high HI.
+  # calibrate_pea_model.py tunes a subset vs StatCan "Peas, dry" -> artifacts/pea_calibrated_params.json.
+  # Calibrated 2026-06-08 vs StatCan "Peas, dry", 52 ECCC stations, 2021 EXCLUDED (corr 0.40).
+  rue: 1.84                  # radiation-use efficiency, g biomass / MJ PAR (legume, lower)
+  kl: 0.14                   # root water-uptake coefficient (drought sensitivity)
+  hi_heat_sensitivity: 0.03  # harvest-index loss per flowering heat-stress day (peas heat-sensitive)
+  harvest_index: 0.48        # potential harvest index
 
 model:
   type: random_forest            # random_forest | gradient_boosting | linear
